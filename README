@@ -1,0 +1,11 @@
+/******************************************************************************
+ * Copyright (c) 2011 Jens Schumann
+ */
+
+Dependencies:
+  - EGL, GLES
+  - uthash   (apt-get install uthash-dev)
+  - ncurses  (apt-get install libncurses5-dev)
+  - vrb      (apt-get install libvrb0-dev)
+  - dlmalloc (https://bitbucket.org/schumajs/dlmalloc-2.8.5)
+	
