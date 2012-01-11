@@ -9,7 +9,9 @@
  * \details
  */
 
+#define _MULTI_THREADED
 #include <errno.h>
+#include <pthread.h>
 #include <uthash.h>
 #include <stdio.h>
 #include <EGL/egl.h>
@@ -20,41 +22,73 @@
 
 #include "client/serializer.h"
 
-struct ContextDispatcherMapping {
+extern char **environ;
+
+struct CtxDispMapElement {
     void               *context;
     GVDISdispatcherptr  dispatcher;
 
-    UT_hash_handle hh;
+    UT_hash_handle      hh;
 };
 
-extern char **environ;
+static int                       vmShmFd          = 0;
+static int                       vmShmSize        = 0
+;
+static int                       processInitiated = 0;
+static pthread_mutex_t           initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t           initThreadLock   = PTHREAD_MUTEX_INITIALIZER;
 
-static struct ContextDispatcherMapping *ctxDispMap = NULL;
-static int                              initiated  = 0;
-static int                              vmShmFd    = 0;
-static int                              vmShmSize  = 0;
+static struct CtxDispMapElement *ctxDispMap       = NULL;
+static pthread_rwlock_t          ctxDispMapLock   = PTHREAD_RWLOCK_INITIALIZER;
+
+static void
+del(EGLContext context)
+{
+    struct CtxDispMapElement *element;
+
+    pthread_rwlock_wrlock(&ctxDispMapLock);
+    HASH_FIND_PTR(ctxDispMap, context, element);
+    HASH_DEL(ctxDispMap, element);
+    pthread_rwlock_unlock(&ctxDispMapLock);
+}
+
+static GVDISdispatcherptr
+get(EGLContext context)
+{
+    struct CtxDispMapElement *element;
+
+    pthread_rwlock_rdlock(&ctxDispMapLock);
+    HASH_FIND_PTR(ctxDispMap, &context, element);
+    pthread_rwlock_unlock(&ctxDispMapLock);
+
+    return element->dispatcher;
+}
 
 static int
-createMapping(EGLContext context, GVDISdispatcherptr dispatcher)
+put(EGLContext context, GVDISdispatcherptr dispatcher)
 {
-    struct ContextDispatcherMapping *newMapping;
+    struct CtxDispMapElement *newElement;
 
-    if ((newMapping = malloc(sizeof(struct ContextDispatcherMapping))) == NULL)
+    if ((newElement = malloc(sizeof(struct CtxDispMapElement))) == NULL)
     {
 	perror("malloc");
 	return -1;
     }	
 
-    newMapping->context    = context;
-    newMapping->dispatcher = dispatcher;
+    newElement->context    = context;
+    newElement->dispatcher = dispatcher;
 
-    HASH_ADD_PTR(ctxDispMap, context, newMapping);
-    
+    pthread_rwlock_wrlock(&ctxDispMapLock);
+    HASH_ADD_PTR(ctxDispMap, context, newElement);
+    pthread_rwlock_unlock(&ctxDispMapLock);
+
     return 0;
 }
 
+#define defaultContext (void *)0
+
 static int
-initEglGles()
+initProcess()
 {
     GVTRPtransportptr  defaultTransport;
     GVDISdispatcherptr defaultDispatcher;
@@ -99,24 +133,54 @@ initEglGles()
     if (gvdisMakeCurrent(defaultDispatcher) == -1)
     {
 	perror("gvdisMakeCurrent");
+	return -1;
     }
 
-    if (createMapping((void *)0, defaultDispatcher) == -1)
+    if (put(defaultContext, defaultDispatcher) == -1)
     {
 	return -1;
     }
 
-    initiated = 1;
+    processInitiated = 1;
 
     return 0;
 }
 
-#define initIfNotDoneAlready()			\
-    do {					\
-	if (!initiated)				\
-	{					\
-	    if (initEglGles() == -1) return -1;	\
-	}					\
+/* TODO are there any issues with double checked locking? */
+#define initProcessIfNotDoneAlready()				\
+    do {							\
+        if (!processInitiated)					\
+        {							\
+            pthread_mutex_lock(&initProcessLock);		\
+            if (!processInitiated)				\
+            {							\
+	        if (initProcess() == -1)			\
+	        {						\
+	            pthread_mutex_unlock(&initProcessLock);	\
+	            /* return -1; */				\
+		    exit(2);					\
+	        }						\
+            }							\
+            pthread_mutex_unlock(&initProcessLock);		\
+        }							\
+    } while (0)
+
+#define initThreadIfNotDoneAlready()					\
+    do {								\
+	if (gvdisGetCurrent() == NULL)					\
+        {								\
+            pthread_mutex_lock(&initThreadLock);			\
+            if (gvdisGetCurrent() == NULL)				\
+            {								\
+	        if (gvdisMakeCurrent(get(defaultContext)) == -1)	\
+	        {							\
+	            pthread_mutex_unlock(&initThreadLock);		\
+	            /* return -1; */					\
+		    exit(2);						\
+	        }							\
+            }								\
+            pthread_mutex_unlock(&initThreadLock);			\
+        }								\
     } while (0)
 
 /* NOTE: attribList is terminated with EGL_NONE, so assert: min.
@@ -140,7 +204,8 @@ eglGetError()
     GVSERcallid callId;
     EGLint      error;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETERROR);
     gvserEndCall();
@@ -158,7 +223,8 @@ eglGetDisplay(EGLNativeDisplayType displayId)
     GVSERcallid callId;
     EGLDisplay  display;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETDISPLAY);
     gvserInData(&displayId, sizeof(EGLNativeDisplayType));
@@ -177,7 +243,8 @@ eglInitialize(EGLDisplay display, EGLint *major, EGLint *minor)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_INITIALIZE);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -202,7 +269,8 @@ eglTerminate(EGLDisplay display)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_TERMINATE);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -222,7 +290,8 @@ const char
     char        *queryString;
     size_t       queryStringLength;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_QUERYSTRING);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -246,7 +315,8 @@ eglGetConfigs(EGLDisplay display, EGLConfig *configs, EGLint configSize, EGLint 
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETCONFIGS);
     gvserInData(&display,    sizeof(EGLDisplay));
@@ -274,7 +344,8 @@ eglChooseConfig(EGLDisplay display, const EGLint *attribList, EGLConfig *configs
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -304,7 +375,8 @@ eglGetConfigAttrib(EGLDisplay display, EGLConfig config, EGLint attribute, EGLin
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETCONFIGATTRIB);    
     gvserInData(&display,   sizeof(EGLDisplay));
@@ -326,7 +398,8 @@ eglCreateWindowSurface(EGLDisplay display, EGLConfig config, EGLNativeWindowType
     GVSERcallid callId;
     EGLSurface  surface;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -351,7 +424,8 @@ eglCreatePbufferSurface(EGLDisplay display, EGLConfig config, const EGLint *attr
     GVSERcallid callId;
     EGLSurface  surface;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -375,7 +449,8 @@ eglCreatePixmapSurface(EGLDisplay display, EGLConfig config, EGLNativePixmapType
     GVSERcallid callId;
     EGLSurface  surface;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -400,7 +475,8 @@ eglDestroySurface(EGLDisplay display, EGLSurface surface)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_DESTROYSURFACE);    
     gvserInData(&display, sizeof(EGLDisplay));
@@ -420,7 +496,8 @@ eglQuerySurface(EGLDisplay display, EGLSurface surface, EGLint attribute, EGLint
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_QUERYSURFACE);    
     gvserInData(&display,   sizeof(EGLDisplay));
@@ -442,7 +519,8 @@ eglBindAPI(EGLenum api)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_BINDAPI);    
     gvserInData(&api, sizeof(EGLBoolean));
@@ -461,7 +539,8 @@ eglQueryAPI()
     GVSERcallid callId;
     EGLenum     api;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_QUERYAPI);    
     gvserEndCall();
@@ -479,7 +558,8 @@ eglWaitClient(void)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_WAITCLIENT);    
     gvserEndCall();
@@ -497,7 +577,8 @@ eglReleaseThread(void)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_RELEASETHREAD);    
     gvserEndCall();
@@ -515,7 +596,8 @@ eglCreatePbufferFromClientBuffer(EGLDisplay display, EGLenum bufferType, EGLClie
     GVSERcallid callId;
     EGLSurface  surface;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -541,7 +623,8 @@ eglSurfaceAttrib(EGLDisplay display, EGLSurface surface, EGLint attribute, EGLin
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_SURFACEATTRIB);
     gvserInData(&display,   sizeof(EGLDisplay));
@@ -563,7 +646,8 @@ eglBindTexImage(EGLDisplay display, EGLSurface surface, EGLint buffer)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_BINDTEXIMAGE);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -584,7 +668,8 @@ eglReleaseTexImage(EGLDisplay display, EGLSurface surface, EGLint buffer)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_RELEASETEXIMAGE);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -605,7 +690,8 @@ eglSwapInterval(EGLDisplay display, EGLint interval)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_SWAPINTERVAL);
     gvserInData(&display,  sizeof(EGLDisplay));
@@ -625,7 +711,8 @@ eglCreateContext(EGLDisplay display, EGLConfig config, EGLContext shareContext, 
     GVSERcallid callId;
     EGLContext  context;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     EGLint attribListSize;
     getAttribListSize(attribList, attribListSize);
@@ -650,7 +737,8 @@ eglDestroyContext(EGLDisplay display, EGLContext context)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_DESTROYCONTEXT);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -670,7 +758,8 @@ eglMakeCurrent(EGLDisplay display, EGLSurface drawSurface, EGLSurface readSurfac
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_MAKECURRENT);
     gvserInData(&display,     sizeof(EGLDisplay));
@@ -691,7 +780,8 @@ EGLContext eglGetCurrentContext()
     GVSERcallid callId;
     EGLContext  context;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETCURRENTCONTEXT);
     gvserEndCall();
@@ -708,7 +798,8 @@ EGLSurface eglGetCurrentSurface(EGLint readdraw)
     GVSERcallid callId;
     EGLSurface  surface;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETCURRENTSURFACE);
     gvserInData(&readdraw, sizeof(EGLint));
@@ -726,7 +817,8 @@ EGLDisplay eglGetCurrentDisplay()
     GVSERcallid callId;
     EGLDisplay  display;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_GETCURRENTDISPLAY);
     gvserEndCall();
@@ -743,7 +835,8 @@ EGLBoolean eglQueryContext(EGLDisplay display, EGLContext context, EGLint attrib
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_QUERYCONTEXT);
     gvserInData(&display,   sizeof(EGLDisplay));
@@ -765,7 +858,8 @@ eglWaitGL()
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_WAITGL);
     gvserEndCall();
@@ -783,7 +877,8 @@ eglWaitNative(EGLint engine)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_WAITNATIVE);
     gvserInData(&engine, sizeof(EGLint));
@@ -802,7 +897,8 @@ eglSwapBuffers(EGLDisplay display, EGLSurface surface)
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_SWAPBUFFERS);
     gvserInData(&display, sizeof(EGLDisplay));
@@ -822,7 +918,8 @@ eglCopyBuffers(EGLDisplay display, EGLSurface surface, EGLNativePixmapType targe
     GVSERcallid callId;
     EGLBoolean  status;
 
-    initIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     callId = gvserCall(GVSER_EGL_COPYBUFFERS);
     gvserInData(&display, sizeof(EGLDisplay));

@@ -66,11 +66,9 @@ int main()
 	exit(2);
     }
 
-    gvslpSleep(2, 0);
-
     democlient();
 
-    gvslpSleep(5, 0);
+    gvslpSleep(10, 0);
 
     if ((status = gvsrvDestroy(server)) == -1)
     {
