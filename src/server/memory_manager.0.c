@@ -56,14 +56,14 @@ void _gvmmgrAlloc()
     size_t      offset; 
 
     callId = gvserCall();
-    gvserInParameter(&length, sizeof(size_t));
+    gvserInData(&length, sizeof(size_t));
     gvserEndCall();
 
     status = gvmmgrAlloc(&offset, length);
 
     gvserReturn(callId);
-    gvserReturnValue(&status, sizeof(int));
-    gvserOutParameter(&offset, sizeof(size_t));
+    gvserOutData(&status, sizeof(int));
+    gvserOutData(&offset, sizeof(size_t));
     gvserEndReturn();
 }
 
@@ -75,13 +75,13 @@ void _gvmmgrFree()
     size_t      offset;
 
     callId = gvserCall();
-    gvserInParameter(&offset, sizeof(size_t));
+    gvserInData(&offset, sizeof(size_t));
     gvserEndCall();
 
     status = gvmmgrFree(offset);
 
     gvserReturn(callId);
-    gvserReturnValue(&status, sizeof(int));
+    gvserOutData(&status, sizeof(int));
     gvserEndReturn();
 }
 

@@ -64,12 +64,12 @@ gvsrvHandshake(size_t offset, size_t length)
     gvdisMakeCurrent(dispatcher);
 
     callId = gvserCall(GVSER_SRV_HANDSHAKE);
-    gvserInParameter(&offset, sizeof(size_t));
-    gvserInParameter(&length, sizeof(size_t));
+    gvserInData(&offset, sizeof(size_t));
+    gvserInData(&length, sizeof(size_t));
     gvserEndCall();
 
     gvserReturn(callId);
-    gvserReturnValue(&status, sizeof(int));
+    gvserOutData(&status, sizeof(int));
     gvserEndReturn();
 
     return status;

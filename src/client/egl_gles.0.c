@@ -24,7 +24,7 @@ struct ContextDispatcherMapping {
     void               *context;
     GVDISdispatcherptr  dispatcher;
 
-    UT_hash_handle  hh;
+    UT_hash_handle hh;
 };
 
 extern char **environ;
@@ -54,7 +54,7 @@ createMapping(EGLContext context, GVDISdispatcherptr dispatcher)
 }
 
 static int
-initEgl()
+initEglGles()
 {
     GVTRPtransportptr  defaultTransport;
     GVDISdispatcherptr defaultDispatcher;
@@ -115,7 +115,7 @@ initEgl()
     do {					\
 	if (!initiated)				\
 	{					\
-	    if (initEgl() == -1) return -1;	\
+	    if (initEglGles() == -1) return -1;	\
 	}					\
     } while (0)
 
@@ -131,8 +131,98 @@ eglGetError()
     gvserEndCall();
 
     gvserReturn(callId);
-    gvserReturnValue(&error, sizeof(EGLint));
+    gvserOutData(&error, sizeof(EGLint));
     gvserEndReturn();
 
     return error;
+}
+
+EGLDisplay
+eglGetDisplay(EGLNativeDisplayType displayId)
+{
+    GVSERcallid callId;
+    EGLDisplay  display;
+
+    initIfNotDoneAlready();
+
+    callId = gvserCall(GVSER_EGL_GETDISPLAY);
+    gvserInData(&displayId, sizeof(EGLNativeDisplayType));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(&display, sizeof(EGLDisplay));
+    gvserEndReturn();
+
+    return display;
+}
+
+EGLBoolean
+eglInitialize(EGLDisplay display, EGLint *major, EGLint *minor)
+{
+    GVSERcallid callId;
+    EGLBoolean  status;
+
+    initIfNotDoneAlready();
+
+    callId = gvserCall(GVSER_EGL_INITIALIZE);
+    gvserInData(&display, sizeof(EGLDisplay));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(&status, sizeof(EGLBoolean));
+    gvserOutData(major, sizeof(EGLint));
+    gvserOutData(minor, sizeof(EGLint));
+    gvserEndReturn();
+
+    return status;
+}
+
+/*
+ * TODO destroy resources if last display is terminated. What to do in case of
+ * error?
+ */
+EGLBoolean
+eglTerminate(EGLDisplay display)
+{
+    GVSERcallid callId;
+    EGLBoolean  status;
+
+    initIfNotDoneAlready();
+
+    callId = gvserCall(GVSER_EGL_TERMINATE);
+    gvserInData(&display, sizeof(EGLDisplay));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(&status, sizeof(EGLBoolean));
+    gvserEndReturn();
+
+    return status;
+}
+
+const char
+*eglQueryString(EGLDisplay display, EGLint name)
+{
+    GVSERcallid  callId;
+    char        *queryString;
+    int          queryStringLength;
+
+    initIfNotDoneAlready();
+
+    callId = gvserCall(GVSER_EGL_QUERYSTRING);
+    gvserInData(&display, sizeof(EGLDisplay));
+    gvserInData(&name, sizeof(EGLint));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(queryString, sizeof(char));
+    gvserEndReturn();
+
+    return queryString;
+}
+
+EGLBoolean
+eglGetConfigs(EGLDisplay display, EGLConfig *configs, EGLint configSize, EGLint *numConfig)
+{
+    return 1;
 }

@@ -48,14 +48,14 @@ void _gvsrvHandshake()
     size_t      length;
 
     callId = gvserCall();
-    gvserInParameter(&offset, sizeof(size_t));
-    gvserInParameter(&length, sizeof(size_t));
+    gvserInData(&offset, sizeof(size_t));
+    gvserInData(&length, sizeof(size_t));
     gvserEndCall();
 
     status = gvsrvHandshake(offset, length);
 
     gvserReturn(callId);
-    gvserReturnValue(&status, sizeof(int));
+    gvserOutData(&status, sizeof(int));
     gvserEndReturn();
 }
 

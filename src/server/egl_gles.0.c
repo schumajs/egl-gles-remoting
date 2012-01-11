@@ -32,7 +32,7 @@ void _eglGetError()
     error = eglGetError();
 
     gvserReturn(callId);
-    gvserReturnValue(&error, sizeof(EGLint));
+    gvserOutData(&error, sizeof(EGLint));
     gvserEndReturn();
 }
 

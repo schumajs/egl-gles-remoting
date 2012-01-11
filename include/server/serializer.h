@@ -27,7 +27,7 @@ GVSERcallid gvserCall();
  * \param [in] data
  * \param [in] length
  */
-void gvserInParameter(void *data, size_t length);
+void gvserInData(void *data, size_t length);
 
 /*! ***************************************************************************
  * \brief
@@ -47,15 +47,7 @@ void gvserReturn(GVSERcallid callId);
  * \param [in] data
  * \param [in] length
  */
-void gvserReturnValue(const void *data, size_t length);
-
-/*! ***************************************************************************
- * \brief
- *
- * \param [in] data
- * \param [in] length
- */
-void gvserOutParameter(const void *data, size_t length);
+void gvserOutData(const void *data, size_t length);
 
 /*! ***************************************************************************
  * \brief

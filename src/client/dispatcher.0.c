@@ -59,7 +59,7 @@ gvserCall(GVSERcmdid cmdId)
 }
 
 void
-gvserInParameter(const void *data, size_t length)
+gvserInData(const void *data, size_t length)
 {
     gvtrpWrite(getCallBuffer(), data, length);
 }
@@ -99,13 +99,7 @@ gvserReturn(GVSERcallid callId)
 }
 
 void
-gvserReturnValue(void *data, size_t length)
-{
-    gvtrpRead(getReturnBuffer(), data, length);
-}
-
-void
-gvserOutParameter(void *data, size_t length)
+gvserOutData(void *data, size_t length)
 {
     gvtrpRead(getReturnBuffer(), data, length);
 }

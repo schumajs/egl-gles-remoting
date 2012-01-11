@@ -22,11 +22,16 @@
 typedef int GVSERcmdid;
 typedef int GVSERcallid;
 
-#define GVSER_MMGR_ALLOC    0
-#define GVSER_MMGR_FREE     1
+#define GVSER_MMGR_ALLOC      0
+#define GVSER_MMGR_FREE       1
 
-#define GVSER_SRV_HANDSHAKE 0
+#define GVSER_SRV_HANDSHAKE   0
 
-#define GVSER_EGL_GETERROR  0
+#define GVSER_EGL_GETERROR    0
+#define GVSER_EGL_GETDISPLAY  1
+#define GVSER_EGL_INITIALIZE  2
+#define GVSER_EGL_TERMINATE   3
+#define GVSER_EGL_QUERYSTRING 4
+#define GVSER_EGL_GETCONFIGS  5
 
 #endif /* SERIALIZER_H */
