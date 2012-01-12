@@ -69,7 +69,6 @@ gvserInData(const void *data, size_t length)
 void
 gvserEndCall()
 {
-
     gvlckRelease(getCallBuffer()->clientLock);
 }
 
