@@ -28,55 +28,74 @@ extern char **environ;
  * ctxDispMap
  */
 
-struct CtxDispMapElement {
-    void               *context;
-    GVDISdispatcherptr  dispatcher;
-
-    UT_hash_handle      hh;
+struct Key {
+    EGLDisplay display;
+    EGLContext context;
 };
 
-static struct CtxDispMapElement *ctxDispMap     = NULL;
-static pthread_rwlock_t          ctxDispMapLock = PTHREAD_RWLOCK_INITIALIZER;
+struct Element {
+    struct Key         key;
+    GVDISdispatcherptr dispatcher;
+    int                markedForDeletion;
+
+    UT_hash_handle     hh;
+};
+
+static struct Element    *ctxDispMap     = NULL;
+static pthread_rwlock_t   ctxDispMapLock = PTHREAD_RWLOCK_INITIALIZER;
 
 static void
-del(EGLContext context)
+del(EGLDisplay display, EGLContext context)
 {
-    struct CtxDispMapElement *element;
+    struct Element *element;
+    struct Element  pattern;
+
+    memset(&pattern, 0, sizeof(struct Element));
+    pattern.key.display = display;
+    pattern.key.context = context;
 
     pthread_rwlock_wrlock(&ctxDispMapLock);
-    HASH_FIND_PTR(ctxDispMap, &context, element);
+    HASH_FIND(hh, ctxDispMap, &pattern.key, sizeof(struct Key), element);
     HASH_DEL(ctxDispMap, element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 }
 
 static GVDISdispatcherptr
-get(EGLContext context)
+get(EGLDisplay display, EGLContext context)
 {
-    struct CtxDispMapElement *element;
+    struct Element *element;
+    struct Element  pattern;
+
+    memset(&pattern, 0, sizeof(struct Element));
+    pattern.key.display = display;
+    pattern.key.context = context;
 
     pthread_rwlock_rdlock(&ctxDispMapLock);
-    HASH_FIND_PTR(ctxDispMap, &context, element);
+    HASH_FIND(hh, ctxDispMap, &pattern.key, sizeof(struct Key), element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 
     return (element != NULL) ? element->dispatcher : NULL;
 }
 
 static int
-put(EGLContext context, GVDISdispatcherptr dispatcher)
+put(EGLDisplay display, EGLContext context, GVDISdispatcherptr dispatcher)
 {
-    struct CtxDispMapElement *newElement;
+    struct Element *newElement;
 
-    if ((newElement = malloc(sizeof(struct CtxDispMapElement))) == NULL)
+    if ((newElement = malloc(sizeof(struct Element))) == NULL)
     {
 	perror("malloc");
 	return -1;
     }	
 
-    newElement->context    = context;
-    newElement->dispatcher = dispatcher;
+    memset(newElement, 0, sizeof(struct Element));
+    newElement->key.display      = display;
+    newElement->key.context      = context;
+    newElement->dispatcher        = dispatcher;
+    newElement->markedForDeletion = 0;
 
     pthread_rwlock_wrlock(&ctxDispMapLock);
-    HASH_ADD_PTR(ctxDispMap, context, newElement);
+    HASH_ADD(hh, ctxDispMap, key, sizeof(struct Key), newElement);
     pthread_rwlock_unlock(&ctxDispMapLock);
 
     return 0;
@@ -86,6 +105,7 @@ put(EGLContext context, GVDISdispatcherptr dispatcher)
  * Process / thread initializers
  */
 
+#define defaultDisplay (void *)0
 #define defaultContext (void *)0
 
 static int             processInitiated = 0;
@@ -140,7 +160,7 @@ initProcess()
 	return -1;
     }
 
-    if (put(defaultContext, defaultDispatcher) == -1)
+    if (put(defaultDisplay, defaultContext, defaultDispatcher) == -1)
     {
 	return -1;
     }
@@ -169,16 +189,16 @@ initProcess()
         }							\
     } while (0)
 
-#define initThreadIfNotDoneAlready()				\
-    do {							\
-	if (gvdisGetCurrent() == NULL)				\
-	{							\
-	    if (gvdisMakeCurrent(get(defaultContext)) == -1)	\
-	    {							\
-		/* return -1; */				\
-		exit(2);					\
-	    }							\
-	}							\
+#define initThreadIfNotDoneAlready()					     \
+    do {								     \
+	if (gvdisGetCurrent() == NULL)					     \
+	{								     \
+	    if (gvdisMakeCurrent(get(defaultDisplay, defaultContext)) == -1) \
+	    {								     \
+		/* return -1; */					     \
+		exit(2);						     \
+	    }								     \
+	}								     \
     } while (0)
 
 /* ***************************************************************************
