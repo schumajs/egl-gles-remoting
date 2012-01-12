@@ -42,13 +42,13 @@ int main()
 
     /* gvslpSleep(1, 0); */
 
-    if (pthread_create(&thread2, NULL, threadFunc, "3") != 0)
+    if (pthread_create(&thread3, NULL, threadFunc, "3") != 0)
     {
 	perror("pthread_create");
 	return -1;
     }
 
-    gvslpSleep(1, 0);
+    gvslpSleep(2, 0);
 
     return 0;
 }

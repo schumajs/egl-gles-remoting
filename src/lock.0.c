@@ -15,10 +15,6 @@
 
 #include "lock.h"
 
-struct GVLCKlock {
-    pthread_mutex_t mutex;
-};
-
 int
 gvlckCreate(GVLCKlockptr *newLock)
 {
@@ -40,7 +36,7 @@ gvlckCreate(GVLCKlockptr *newLock)
     }
 
     *newLock = malloc(sizeof(pthread_mutex_t));
-    (*newLock)->mutex = mutex;
+    *(*newLock) = mutex;
 
     return 0;
 }
@@ -48,7 +44,7 @@ gvlckCreate(GVLCKlockptr *newLock)
 int
 gvlckAcquire(GVLCKlockptr lock)
 {
-    if (pthread_mutex_lock(&(lock->mutex)) != 0)
+    if (pthread_mutex_lock(lock) != 0)
     {
 	perror("pthread_mutex_lock");
 	return -1;
@@ -60,7 +56,7 @@ gvlckAcquire(GVLCKlockptr lock)
 int
 gvlckTryToAcquire(GVLCKlockptr lock)
 {
-    if (pthread_mutex_trylock(&(lock->mutex)) != 0)
+    if (pthread_mutex_trylock(lock) != 0)
     {
 	perror("pthread_mutex_trylock");
 	return -1;
@@ -72,7 +68,7 @@ gvlckTryToAcquire(GVLCKlockptr lock)
 int
 gvlckRelease(GVLCKlockptr lock)
 {
-    if (pthread_mutex_unlock(&(lock->mutex)) != 0)
+    if (pthread_mutex_unlock(lock) != 0)
     {
 	perror("pthread_mutex_unlock");
 	return -1;
@@ -84,7 +80,7 @@ gvlckRelease(GVLCKlockptr lock)
 int
 gvlckDestroy(GVLCKlockptr lock)
 {
-    if (pthread_mutex_destroy(&(lock->mutex)) != 0)
+    if (pthread_mutex_destroy(lock) != 0)
     {
 	perror("pthread_mutex_destroy");
 	return -1;

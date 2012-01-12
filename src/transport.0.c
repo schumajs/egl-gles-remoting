@@ -19,11 +19,6 @@
 #include "sleep.h"
 #include "transport.h"
 
-/* GVLCKlock "forward declaration" -- dirty ... */
-struct GVLCKlock {
-    pthread_mutex_t mutex;
-};
-
 /* ****************************************************************************
  * Buffer
  */
@@ -38,32 +33,14 @@ struct Buffer {
     struct PersistentBufferPart {
 	VRB               head;
 
-	struct GVLCKlock  clientLock;
-	struct GVLCKlock  serverLock;
-    } *persistentPart;
+	GVLCKlock  clientLock;
+	GVLCKlock  serverLock;
+    } *inShm;
 
 };
 
-#define getBuffer(buffer)                                 \
+#define castBuffer(buffer) \
     ((struct Buffer *)buffer)
-
-#define setBufferPersistentPart(buffer, toPersistentPart) \
-    getBuffer(buffer)->persistentPart = toPersistentPart
-
-#define getBufferHead(buffer)                             \
-    getBuffer(buffer)->persistentPart->head
-
-#define getBufferTail(buffer)                             \
-    getBuffer(buffer)->tail
-
-#define setBufferTail(buffer, toTail)		          \
-    getBuffer(buffer)->tail = toTail
-
-#define getBufferClientLock(buffer)                       \
-    getBuffer(buffer)->persistentPart->clientLock
-
-#define getBufferServerLock(buffer)                       \
-    getBuffer(buffer)->persistentPart->serverLock
 
 /* ****************************************************************************
  * Transport
@@ -83,30 +60,12 @@ struct Transport {
 
 	struct PersistentBufferPart callBuffer;
 	struct PersistentBufferPart returnBuffer;
-    } *persistentPart;
+    } *inShm;
 
 };
 
-#define getTransport(transport)                                 \
+#define castTransport(transport) \
     ((struct Transport *)transport)
-
-#define getTransportPersistentPart(transport)	                \
-    getTransport(transport)->persistentPart
-
-#define setTransportPersistentPart(transport, toPersistentPart)	\
-    getTransport(transport)->persistentPart = toPersistentPart
-
-#define getTransportState(transport)                            \
-    getTransport(transport)->persistentPart->state
-
-#define setTransportState(transport, toState)			\
-    getTransport(transport)->persistentPart->state = toState
-
-#define getTransportCallBuffer(transport)                       \
-    getTransport(transport)->persistentPart->callBuffer
-
-#define getTransportReturnBuffer(transport)                     \
-    getTransport(transport)->persistentPart->returnBuffer
 
 /* ****************************************************************************
  * File / Memory Layout 
@@ -153,7 +112,7 @@ struct Transport {
  * 2. logical mmaped file:
  * -----------------------
  *
- * The buffer tails are mapped twice to a consecutive logical memory region, so
+ * The buffer tails are mainShmed twice to a consecutive logical memory region, so
  * the logical length is: transport head size + 2 * transport tail size
  *
  *    __________ 2 * transport tail size _____________
@@ -201,23 +160,27 @@ static int systemPageSize = 4096;
 /* ****************************************************************************
  */
 
-#define initLock(lock)                     \
-    do {                                   \
-        struct GVLCKlock *tempLock;        \
-                                           \
-        if (gvlckCreate(&tempLock) == -1)  \
-        {                                  \
-	    perror("gvlckCreate");         \
-	    return -1;                     \
-	}                                  \
-	                                   \
-        *lock = *tempLock;                 \
-                                           \
-        if (gvlckDestroy(tempLock) == -1)  \
-        {                                  \
-	    perror("gvlckDestroy");        \
-	    return -1;                     \
-        }                                  \
+#define initLocks(callBuffer, returnBuffer)				       \
+    do {								       \
+        GVLCKlockptr tempLock;						       \
+									       \
+	if (gvlckCreate(&tempLock) == -1)				       \
+	{								       \
+	    perror("gvlckCreate");					       \
+	    return -1;							       \
+	}								       \
+									       \
+	memcpy(&callBuffer->inShm->clientLock, tempLock, sizeof(GVLCKlock));   \
+	memcpy(&callBuffer->inShm->serverLock, tempLock, sizeof(GVLCKlock));   \
+									       \
+	memcpy(&returnBuffer->inShm->clientLock, tempLock, sizeof(GVLCKlock)); \
+	memcpy(&returnBuffer->inShm->serverLock, tempLock, sizeof(GVLCKlock)); \
+									       \
+        if (gvlckDestroy(tempLock) == -1)				       \
+        {								       \
+	    perror("gvlckDestroy");					       \
+	    return -1;							       \
+        }								       \
     } while(0)
 
 /** ***************************************************************************
@@ -298,24 +261,24 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
     }
 
     transport = malloc(sizeof(struct Transport));
-    setTransportPersistentPart(transport, base);
+    transport->inShm = base;
 
     callBuffer = malloc(sizeof(struct Buffer));
-    setBufferPersistentPart(callBuffer, &(getTransportCallBuffer(transport)));
+    callBuffer->inShm = &transport->inShm->callBuffer;
 
-    setBufferTail(callBuffer, (base + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET));
+    callBuffer->tail = base + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET;
 
     returnBuffer = malloc(sizeof(struct Buffer));
-    setBufferPersistentPart(returnBuffer, &(getTransportReturnBuffer(transport)));
+    returnBuffer->inShm = &transport->inShm->callBuffer;
 
-    setBufferTail(returnBuffer, base + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length));
+    returnBuffer->tail = base + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length);
 
-    if (getTransportState(transport) == STATE_UNINITIALIZED)
+    if (transport->inShm->state == STATE_UNINITIALIZED)
     {
-	vrb_p callBufferHead   = &(getBufferHead(callBuffer));
-	vrb_p returnBufferHead = &(getBufferHead(returnBuffer));
+	vrb_p callBufferHead   = &callBuffer->inShm->head;
+	vrb_p returnBufferHead = &returnBuffer->inShm->head;
 
-	setTransportState(transport, STATE_INITIALIZED);
+	transport->inShm->state = STATE_INITIALIZED;
 
 	callBufferHead->lower_ptr = 0;
 	callBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
@@ -325,9 +288,6 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
 	callBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
 	vrb_set_mmap(callBufferHead);
 
-	initLock(&(getBufferClientLock(callBuffer)));
-	initLock(&(getBufferServerLock(callBuffer)));
-
 	returnBufferHead->lower_ptr = 0;
 	returnBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
 	returnBufferHead->first_ptr = 0;
@@ -336,8 +296,7 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
 	returnBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
 	vrb_set_mmap(returnBufferHead);
 
-	initLock(&(getBufferClientLock(returnBuffer)));
-	initLock(&(getBufferServerLock(returnBuffer)));
+	initLocks(callBuffer, returnBuffer);
     }
 
     *newTransport = (GVTRPtransportptr) transport;
@@ -349,11 +308,11 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
     (*newTransport)->callBuffer   = (GVTRPbufferptr) callBuffer;
     (*newTransport)->returnBuffer = (GVTRPbufferptr) returnBuffer;
 
-    (*newTransport)->callBuffer->clientLock  = &(getBufferClientLock(callBuffer));
-    (*newTransport)->callBuffer->serverLock = &(getBufferServerLock(callBuffer));
+    (*newTransport)->callBuffer->clientLock  = &callBuffer->inShm->clientLock;
+    (*newTransport)->callBuffer->serverLock  = &callBuffer->inShm->serverLock;
 
-    (*newTransport)->returnBuffer->clientLock  = &(getBufferClientLock(returnBuffer));
-    (*newTransport)->returnBuffer->serverLock = &(getBufferServerLock(returnBuffer));
+    (*newTransport)->returnBuffer->clientLock = &returnBuffer->inShm->clientLock;
+    (*newTransport)->returnBuffer->serverLock = &returnBuffer->inShm->serverLock;
 
     return 0;
 }
@@ -363,8 +322,8 @@ gvtrpDataPtr(GVTRPbufferptr buffer, void **dataPtr)
 {
     size_t offset;
 
-    offset = (size_t) vrb_data_ptr(&(getBufferHead(buffer)));
-    *dataPtr = getBufferTail(buffer) + offset;
+    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShm->head);
+    *dataPtr = castBuffer(buffer)->tail + offset;
 
     return 0;
 }
@@ -372,29 +331,29 @@ gvtrpDataPtr(GVTRPbufferptr buffer, void **dataPtr)
 int
 gvtrpDataLength(GVTRPbufferptr buffer, size_t *length)
 {
-    *length = vrb_data_len(&(getBufferHead(buffer)));
+    *length = vrb_data_len(&castBuffer(buffer)->inShm->head);
     return 0;
 }
 
 int
 gvtrpTake(GVTRPbufferptr buffer, size_t length)
 {
-    vrb_take(&(getBufferHead(buffer)), length);
+    vrb_take(&castBuffer(buffer)->inShm->head, length);
     return 0;
 }
 
 int
 gvtrpRead(GVTRPbufferptr buffer, void *addr, size_t restLength)
 {
-    vrb_p   head = &(getBufferHead(buffer));
-    void   *tail = getBufferTail(buffer);
+    vrb_p   head = &castBuffer(buffer)->inShm->head;
+    void   *tail = castBuffer(buffer)->tail;
 
     size_t  offset;
     size_t  dataLength;
 
     while (1) 
     {
-	/* TODO synchronization */
+	/* TODO synchronization? */
 	offset     = (size_t) vrb_data_ptr(head);
 	dataLength = vrb_data_len(head);
 
@@ -425,8 +384,8 @@ gvtrpSpacePtr(GVTRPbufferptr buffer, void **spacePtr)
 {
     size_t offset;
 
-    offset = (size_t) vrb_data_ptr(&(getBufferHead(buffer)));
-    *spacePtr = getBufferTail(buffer) + offset;
+    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShm->head);
+    *spacePtr = castBuffer(buffer)->tail + offset;
 
     return 0;
 }
@@ -434,29 +393,29 @@ gvtrpSpacePtr(GVTRPbufferptr buffer, void **spacePtr)
 int
 gvtrpSpaceLength(GVTRPbufferptr buffer, size_t *length)
 {
-    *length = vrb_space_len(&(getBufferHead(buffer)));
+    *length = vrb_space_len(&castBuffer(buffer)->inShm->head);
     return 0;
 }
 
 int
 gvtrpGive(GVTRPbufferptr buffer, size_t length)
 {
-    vrb_give(&(getBufferHead(buffer)), length);
+    vrb_give(&castBuffer(buffer)->inShm->head, length);
     return 0;
 }
 
 int
 gvtrpWrite(GVTRPbufferptr buffer, const void *addr, size_t restLength)
 {
-    vrb_p   head = &(getBufferHead(buffer));
-    void   *tail = getBufferTail(buffer);
+    vrb_p   head = &castBuffer(buffer)->inShm->head;
+    void   *tail = castBuffer(buffer)->tail;
 
     size_t  offset;
     size_t  spaceLength;
 
     while (1) 
     {
-	/* TODO synchronization */
+	/* TODO synchronization? */
 	offset     = (size_t) vrb_space_ptr(head);
 	spaceLength = vrb_space_len(head);
 
@@ -487,7 +446,7 @@ gvtrpDestroy(GVTRPtransportptr transport)
 {
     size_t length = transport->length;
 
-    if (munmap(getTransportPersistentPart(transport),
+    if (munmap(castTransport(transport)->inShm,
 	       length + TRANSPORT_TAIL_SIZE(length)))
     {
 	perror("munmap");

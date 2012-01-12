@@ -16,7 +16,10 @@
 #ifndef LOCK_H_
 #define LOCK_H_
 
-typedef struct GVLCKlock *GVLCKlockptr;
+#include <pthread.h>
+
+typedef pthread_mutex_t GVLCKlock; 
+typedef GVLCKlock *GVLCKlockptr;
 
 /*! ***************************************************************************
  * \brief 
