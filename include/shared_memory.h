@@ -18,9 +18,7 @@
 
 #include <unistd.h>
 
-#include "globals.h"
-
-typedef GVid GVSHMshm; 
+typedef int GVSHMshm; 
 typedef GVSHMshm *GVSHMshmptr;
 
 /*! ***************************************************************************

@@ -27,6 +27,10 @@ struct GVTRPbuffer {
 typedef struct GVTRPbuffer *GVTRPbufferptr;
 
 struct GVTRPtransport {
+    GVSHMshmptr    shm;
+    size_t         offset;
+    size_t         length;
+
     GVTRPbufferptr callBuffer;
     GVTRPbufferptr returnBuffer;
 };

@@ -76,7 +76,6 @@ struct Transport {
 
     /* Transient part */
     struct GVTRPtransport public;
-    size_t                length;
 
     /* Persistent part */
     struct PersistentTransportPart {
@@ -90,12 +89,6 @@ struct Transport {
 
 #define getTransport(transport)                                 \
     ((struct Transport *)transport)
-
-#define getTransportLength(transport)                           \
-    getTransport(transport)->length
-
-#define setTransportLength(transport, toLength)			\
-    getTransport(transport)->length = toLength
 
 #define getTransportPersistentPart(transport)	                \
     getTransport(transport)->persistentPart
@@ -307,8 +300,6 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
     transport = malloc(sizeof(struct Transport));
     setTransportPersistentPart(transport, base);
 
-    setTransportLength(transport, length);
-
     callBuffer = malloc(sizeof(struct Buffer));
     setBufferPersistentPart(callBuffer, &(getTransportCallBuffer(transport)));
 
@@ -350,6 +341,10 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
     }
 
     *newTransport = (GVTRPtransportptr) transport;
+
+    (*newTransport)->shm    = shm;
+    (*newTransport)->offset = offset;
+    (*newTransport)->length = length;
 
     (*newTransport)->callBuffer   = (GVTRPbufferptr) callBuffer;
     (*newTransport)->returnBuffer = (GVTRPbufferptr) returnBuffer;
@@ -490,7 +485,7 @@ gvtrpWrite(GVTRPbufferptr buffer, const void *addr, size_t restLength)
 int
 gvtrpDestroy(GVTRPtransportptr transport)
 {
-    size_t length = getTransportLength(transport);
+    size_t length = transport->length;
 
     if (munmap(getTransportPersistentPart(transport),
 	       length + TRANSPORT_TAIL_SIZE(length)))
