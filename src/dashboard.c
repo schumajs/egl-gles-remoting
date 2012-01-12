@@ -66,6 +66,8 @@ int main()
 	exit(2);
     }
 
+    gvslpSleep(1, 0);
+
     democlient();
 
     gvslpSleep(10, 0);

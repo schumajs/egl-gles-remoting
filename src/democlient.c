@@ -1,4 +1,5 @@
 
+#define _MULTI_THREADED
 #include <pthread.h>
 #include <stdio.h>
 #include <EGL/egl.h>
@@ -17,29 +18,35 @@ static void
 
 int main()
 {
-    pthread_t thread;
-
-    if (pthread_create(&thread, NULL, threadFunc, "1") != 0)
-    {
-	perror("pthread_create");
-	return -1;
-    }
-
-    puts("\n\n\n");
-
-    gvslpSleep(1, 0);
-
-    if (pthread_create(&thread, NULL, threadFunc, "2") != 0)
-    {
-	perror("pthread_create");
-	return -1;
-    }
-
-    puts("\n\n\n");
-
-    gvslpSleep(1, 0);
+    pthread_t thread1;
+    pthread_t thread2;
+    pthread_t thread3;
 
     printf("THREAD PARENT ERROR %i\n", eglGetError());
+
+    /* gvslpSleep(1, 0); */
+
+    if (pthread_create(&thread1, NULL, threadFunc, "1") != 0)
+    {
+	perror("pthread_create");
+	return -1;
+    }
+
+    /* gvslpSleep(1, 0); */
+
+    if (pthread_create(&thread2, NULL, threadFunc, "2") != 0)
+    {
+	perror("pthread_create");
+	return -1;
+    }
+
+    /* gvslpSleep(1, 0); */
+
+    if (pthread_create(&thread2, NULL, threadFunc, "3") != 0)
+    {
+	perror("pthread_create");
+	return -1;
+    }
 
     gvslpSleep(1, 0);
 

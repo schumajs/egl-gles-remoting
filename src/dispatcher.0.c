@@ -29,7 +29,6 @@ static int           refCounter        =  0;
 static void
 threadSpecificDataDestructor(void *threadSpecificData) {
     pthread_setspecific(threadSpecificKey, NULL);
-    free(threadSpecificData);
 }
 
 /* ***************************************************************************

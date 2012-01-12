@@ -44,7 +44,9 @@ gvserCall(GVSERcmdid cmdId)
 
     gvlckAcquire(getCallBuffer()->clientLock);
 
-    /* TODO replace cantor pairing function */
+    /* TODO replace cantor pairing function, pthread_self is UL,
+     * syscall(SYS_gettid) is TID
+     */
     {
 	pid_t     pid = getpid();
 	pthread_t tid = pthread_self();
@@ -67,6 +69,7 @@ gvserInData(const void *data, size_t length)
 void
 gvserEndCall()
 {
+
     gvlckRelease(getCallBuffer()->clientLock);
 }
 

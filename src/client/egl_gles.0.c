@@ -24,6 +24,10 @@
 
 extern char **environ;
 
+/* ***************************************************************************
+ * ctxDispMap
+ */
+
 struct CtxDispMapElement {
     void               *context;
     GVDISdispatcherptr  dispatcher;
@@ -31,15 +35,8 @@ struct CtxDispMapElement {
     UT_hash_handle      hh;
 };
 
-static int                       vmShmFd          = 0;
-static int                       vmShmSize        = 0
-;
-static int                       processInitiated = 0;
-static pthread_mutex_t           initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t           initThreadLock   = PTHREAD_MUTEX_INITIALIZER;
-
-static struct CtxDispMapElement *ctxDispMap       = NULL;
-static pthread_rwlock_t          ctxDispMapLock   = PTHREAD_RWLOCK_INITIALIZER;
+static struct CtxDispMapElement *ctxDispMap     = NULL;
+static pthread_rwlock_t          ctxDispMapLock = PTHREAD_RWLOCK_INITIALIZER;
 
 static void
 del(EGLContext context)
@@ -47,7 +44,7 @@ del(EGLContext context)
     struct CtxDispMapElement *element;
 
     pthread_rwlock_wrlock(&ctxDispMapLock);
-    HASH_FIND_PTR(ctxDispMap, context, element);
+    HASH_FIND_PTR(ctxDispMap, &context, element);
     HASH_DEL(ctxDispMap, element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 }
@@ -61,7 +58,7 @@ get(EGLContext context)
     HASH_FIND_PTR(ctxDispMap, &context, element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 
-    return element->dispatcher;
+    return (element != NULL) ? element->dispatcher : NULL;
 }
 
 static int
@@ -85,18 +82,25 @@ put(EGLContext context, GVDISdispatcherptr dispatcher)
     return 0;
 }
 
+/* ***************************************************************************
+ * Process / thread initializers
+ */
+
 #define defaultContext (void *)0
+
+static int             processInitiated = 0;
+static pthread_mutex_t initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
 
 static int
 initProcess()
 {
+    int    vmShmFd   = atoi(environ[0]);
+    size_t vmShmSize = atoi(environ[1]);
+
     GVTRPtransportptr  defaultTransport;
     GVDISdispatcherptr defaultDispatcher;
     size_t             offset;
     size_t             length;
-
-    vmShmFd   = atoi(environ[0]);
-    vmShmSize = atoi(environ[1]);
 
     length = 101 * 4096;
 
@@ -165,28 +169,26 @@ initProcess()
         }							\
     } while (0)
 
-#define initThreadIfNotDoneAlready()					\
-    do {								\
-	if (gvdisGetCurrent() == NULL)					\
-        {								\
-            pthread_mutex_lock(&initThreadLock);			\
-            if (gvdisGetCurrent() == NULL)				\
-            {								\
-	        if (gvdisMakeCurrent(get(defaultContext)) == -1)	\
-	        {							\
-	            pthread_mutex_unlock(&initThreadLock);		\
-	            /* return -1; */					\
-		    exit(2);						\
-	        }							\
-            }								\
-            pthread_mutex_unlock(&initThreadLock);			\
-        }								\
+#define initThreadIfNotDoneAlready()				\
+    do {							\
+	if (gvdisGetCurrent() == NULL)				\
+	{							\
+	    if (gvdisMakeCurrent(get(defaultContext)) == -1)	\
+	    {							\
+		/* return -1; */				\
+		exit(2);					\
+	    }							\
+	}							\
     } while (0)
+
+/* ***************************************************************************
+ * EGL
+ */
 
 /* NOTE: attribList is terminated with EGL_NONE, so assert: min.
    attribListSize == 1
 */
-#define getAttribListSize(attrbList, attribListSize)		\
+#define getAttribListSize(attribList, attribListSize)		\
     do {							\
 	attribListSize = 0;					\
 	if (attribList != NULL)					\
