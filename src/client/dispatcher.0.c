@@ -42,7 +42,7 @@ gvserCall(GVSERcmdid cmdId)
 {
     GVSERcallid callId;
 
-    gvlckAcquire(getCallBuffer()->clientLock);
+    gvAcquireLock(getCallBuffer()->clientLock);
 
     /* TODO replace cantor pairing function, pthread_self is UL,
      * syscall(SYS_gettid) is TID
@@ -69,7 +69,7 @@ gvserInData(const void *data, size_t length)
 void
 gvserEndCall()
 {
-    gvlckRelease(getCallBuffer()->clientLock);
+    gvReleaseLock(getCallBuffer()->clientLock);
 }
 
 void
@@ -80,7 +80,7 @@ gvserReturn(GVSERcallid callId)
 
     while (1)
     {
-	gvlckAcquire(getReturnBuffer()->clientLock);    
+	gvAcquireLock(getReturnBuffer()->clientLock);    
 
 	gvtrpDataLength(getReturnBuffer(), &dataLength);
 
@@ -94,7 +94,7 @@ gvserReturn(GVSERcallid callId)
 	    }
 	}
 
-	gvlckRelease(getReturnBuffer()->clientLock);
+	gvReleaseLock(getReturnBuffer()->clientLock);
 
 	gvslpSleep(0, 1000);
     }
@@ -109,5 +109,5 @@ gvserOutData(void *data, size_t length)
 void
 gvserEndReturn()
 {
-    gvlckRelease(getReturnBuffer()->clientLock);    
+    gvReleaseLock(getReturnBuffer()->clientLock);    
 }

@@ -20,8 +20,8 @@
 #include "shared_memory.h"
 
 struct GVTRPbuffer {
-    GVLCKlockptr clientLock;
-    GVLCKlockptr serverLock;
+    GVlockptr clientLock;
+    GVlockptr serverLock;
 };
 
 typedef struct GVTRPbuffer *GVTRPbufferptr;

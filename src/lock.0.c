@@ -16,7 +16,7 @@
 #include "lock.h"
 
 int
-gvlckCreate(GVLCKlockptr *newLock)
+gvCreateLock(GVlockptr *newLock)
 {
     pthread_mutex_t     mutex;
     pthread_mutexattr_t mutexAttr;
@@ -42,7 +42,7 @@ gvlckCreate(GVLCKlockptr *newLock)
 }
 
 int
-gvlckAcquire(GVLCKlockptr lock)
+gvlckAcquire(GVlockptr lock)
 {
     if (pthread_mutex_lock(lock) != 0)
     {
@@ -54,7 +54,7 @@ gvlckAcquire(GVLCKlockptr lock)
 }
 
 int
-gvlckTryToAcquire(GVLCKlockptr lock)
+gvTryToAcquireLock(GVlockptr lock)
 {
     if (pthread_mutex_trylock(lock) != 0)
     {
@@ -66,7 +66,7 @@ gvlckTryToAcquire(GVLCKlockptr lock)
 }
 
 int
-gvlckRelease(GVLCKlockptr lock)
+gvReleaseLock(GVlockptr lock)
 {
     if (pthread_mutex_unlock(lock) != 0)
     {
@@ -78,7 +78,7 @@ gvlckRelease(GVLCKlockptr lock)
 }
 
 int
-gvlckDestroy(GVLCKlockptr lock)
+gvlckDestroy(GVlockptr lock)
 {
     if (pthread_mutex_destroy(lock) != 0)
     {

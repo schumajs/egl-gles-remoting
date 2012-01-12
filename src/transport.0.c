@@ -33,8 +33,8 @@ struct Buffer {
     struct PersistentBufferPart {
 	VRB               head;
 
-	GVLCKlock  clientLock;
-	GVLCKlock  serverLock;
+	GVlock  clientLock;
+	GVlock  serverLock;
     } *inShm;
 
 };
@@ -162,19 +162,19 @@ static int systemPageSize = 4096;
 
 #define initLocks(callBuffer, returnBuffer)				       \
     do {								       \
-        GVLCKlockptr tempLock;						       \
+        GVlockptr tempLock;						       \
 									       \
-	if (gvlckCreate(&tempLock) == -1)				       \
+	if (gvCreateLock(&tempLock) == -1)				       \
 	{								       \
-	    perror("gvlckCreate");					       \
+	    perror("gvCreateLock");					       \
 	    return -1;							       \
 	}								       \
 									       \
-	memcpy(&callBuffer->inShm->clientLock, tempLock, sizeof(GVLCKlock));   \
-	memcpy(&callBuffer->inShm->serverLock, tempLock, sizeof(GVLCKlock));   \
+	memcpy(&callBuffer->inShm->clientLock, tempLock, sizeof(GVlock));   \
+	memcpy(&callBuffer->inShm->serverLock, tempLock, sizeof(GVlock));   \
 									       \
-	memcpy(&returnBuffer->inShm->clientLock, tempLock, sizeof(GVLCKlock)); \
-	memcpy(&returnBuffer->inShm->serverLock, tempLock, sizeof(GVLCKlock)); \
+	memcpy(&returnBuffer->inShm->clientLock, tempLock, sizeof(GVlock)); \
+	memcpy(&returnBuffer->inShm->serverLock, tempLock, sizeof(GVlock)); \
 									       \
         if (gvlckDestroy(tempLock) == -1)				       \
         {								       \

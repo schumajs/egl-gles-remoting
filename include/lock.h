@@ -9,17 +9,13 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvlck
- */
-
 #ifndef LOCK_H_
 #define LOCK_H_
 
 #include <pthread.h>
 
-typedef pthread_mutex_t GVLCKlock; 
-typedef GVLCKlock *GVLCKlockptr;
+typedef pthread_mutex_t GVlock; 
+typedef GVlock *GVlockptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -27,7 +23,7 @@ typedef GVLCKlock *GVLCKlockptr;
  * \param  [out] newLock
  * \return
  */
-int gvlckCreate(GVLCKlockptr *newLock);
+int gvCreateLock(GVlockptr *newLock);
 
 /*! ***************************************************************************
  * \brief 
@@ -35,7 +31,7 @@ int gvlckCreate(GVLCKlockptr *newLock);
  * \param  [in] lock
  * \return
  */
-int gvlckAcquire(GVLCKlockptr lock);
+int gvAcquireLock(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -43,7 +39,7 @@ int gvlckAcquire(GVLCKlockptr lock);
  * \param  [in] lock
  * \return
  */
-int gvlckTryToAcquire(GVLCKlockptr lock);
+int gvTryToAcquireLock(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -51,7 +47,7 @@ int gvlckTryToAcquire(GVLCKlockptr lock);
  * \param  [in] lock 
  * \return
  */
-int gvlckRelease(GVLCKlockptr lock);
+int gvReleaseLock(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -59,6 +55,6 @@ int gvlckRelease(GVLCKlockptr lock);
  * \param  [in] lock
  * \return
  */
-int gvlckDestroy(GVLCKlockptr lock);
+int gvDestroyLock(GVlockptr lock);
 
 #endif /* LOCK_H */
