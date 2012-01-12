@@ -25,6 +25,13 @@
  * \param  [in] length
  * \return 
  */
-int gvsrvHandshake(size_t offset, size_t length);
+int gvsrvBonjour(size_t offset, size_t length);
+
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \return 
+ */
+int gvsrvAuRevoir(void);
 
 #endif /* SERVER_H_ */

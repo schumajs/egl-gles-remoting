@@ -22,13 +22,13 @@ democlient()
     char   srvShmFd[12];
     char   srvShmSize[12];
 
-    snprintf(vmShmFd, 12, "%i", *((int *)mmgr->vmShm));
+    snprintf(vmShmFd, 12, "%i", *(mmgr->vmShm));
     snprintf(vmShmSize, 12, "%zu", mmgr->vmShmSize);
 
-    snprintf(mmgrShmFd, 12, "%i", *((int *)mmgr->mmgrShm));
+    snprintf(mmgrShmFd, 12, "%i", *(mmgr->mmgrShm));
     snprintf(mmgrShmSize, 12, "%zu", mmgr->mmgrShmSize);
 
-    snprintf(srvShmFd, 12, "%i", *((int *)server->srvShm));
+    snprintf(srvShmFd, 12, "%i", *(server->srvShm));
     snprintf(srvShmSize, 12, "%zu", server->srvShmSize);
 
     if ((pid = fork()) == 0)

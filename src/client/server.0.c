@@ -55,7 +55,7 @@ initSrvClient()
     } while (0)
 
 int
-gvsrvHandshake(size_t offset, size_t length)
+gvsrvBonjour(size_t offset, size_t length)
 {
     GVSERcallid callId;
     int         status;
@@ -63,9 +63,28 @@ gvsrvHandshake(size_t offset, size_t length)
     initIfNotDoneAlready();
     gvdisMakeCurrent(dispatcher);
 
-    callId = gvserCall(GVSER_SRV_HANDSHAKE);
+    callId = gvserCall(GVSER_SRV_BONJOUR);
     gvserInData(&offset, sizeof(size_t));
     gvserInData(&length, sizeof(size_t));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(&status, sizeof(int));
+    gvserEndReturn();
+
+    return status;
+}
+
+int
+gvsrvAuRevoir()
+{
+    GVSERcallid callId;
+    int         status;
+
+    initIfNotDoneAlready();
+    gvdisMakeCurrent(dispatcher);
+
+    callId = gvserCall(GVSER_SRV_AUREVOIR);
     gvserEndCall();
 
     gvserReturn(callId);

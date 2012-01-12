@@ -18,8 +18,10 @@
 
 #include <unistd.h>
 
-typedef int GVSHMshm;
-typedef GVSHMshm* GVSHMshmptr;
+#include "globals.h"
+
+typedef GVid GVSHMshm; 
+typedef GVSHMshm *GVSHMshmptr;
 
 /*! ***************************************************************************
  * \brief 

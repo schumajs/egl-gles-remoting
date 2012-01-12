@@ -36,7 +36,8 @@ struct Key {
 struct Element {
     struct Key         key;
     GVDISdispatcherptr dispatcher;
-    int                markedForDeletion;
+    int                markCurrent;
+    int                markDeleted;
 
     UT_hash_handle     hh;
 };
@@ -45,23 +46,15 @@ static struct Element    *ctxDispMap     = NULL;
 static pthread_rwlock_t   ctxDispMapLock = PTHREAD_RWLOCK_INITIALIZER;
 
 static void
-del(EGLDisplay display, EGLContext context)
+del(struct Element *element)
 {
-    struct Element *element;
-    struct Element  pattern;
-
-    memset(&pattern, 0, sizeof(struct Element));
-    pattern.key.display = display;
-    pattern.key.context = context;
-
     pthread_rwlock_wrlock(&ctxDispMapLock);
-    HASH_FIND(hh, ctxDispMap, &pattern.key, sizeof(struct Key), element);
     HASH_DEL(ctxDispMap, element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 }
 
-static GVDISdispatcherptr
-get(EGLDisplay display, EGLContext context)
+static struct Element
+*get(EGLDisplay display, EGLContext context)
 {
     struct Element *element;
     struct Element  pattern;
@@ -74,7 +67,7 @@ get(EGLDisplay display, EGLContext context)
     HASH_FIND(hh, ctxDispMap, &pattern.key, sizeof(struct Key), element);
     pthread_rwlock_unlock(&ctxDispMapLock);
 
-    return (element != NULL) ? element->dispatcher : NULL;
+    return element;
 }
 
 static int
@@ -89,10 +82,11 @@ put(EGLDisplay display, EGLContext context, GVDISdispatcherptr dispatcher)
     }	
 
     memset(newElement, 0, sizeof(struct Element));
-    newElement->key.display      = display;
-    newElement->key.context      = context;
-    newElement->dispatcher        = dispatcher;
-    newElement->markedForDeletion = 0;
+    newElement->key.display = display;
+    newElement->key.context = context;
+    newElement->dispatcher  = dispatcher;
+    newElement->markCurrent = 0;
+    newElement->markDeleted = 0;
 
     pthread_rwlock_wrlock(&ctxDispMapLock);
     HASH_ADD(hh, ctxDispMap, key, sizeof(struct Key), newElement);
@@ -114,8 +108,8 @@ static pthread_mutex_t initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
 static int
 initProcess()
 {
-    int    vmShmFd   = atoi(environ[0]);
-    size_t vmShmSize = atoi(environ[1]);
+    GVSHMshm vmShm     = atoi(environ[0]); 
+    size_t   vmShmSize = atoi(environ[1]);
 
     GVTRPtransportptr  defaultTransport;
     GVDISdispatcherptr defaultDispatcher;
@@ -136,13 +130,13 @@ initProcess()
 	return -1;
     }
 
-    if (gvsrvHandshake(offset, length) == -1)
+    if (gvsrvBonjour(offset, length) == -1)
     {
 	perror("gvsrvHandshake");
 	return -1;
     }
 
-    if (gvtrpCreate(&defaultTransport, &vmShmFd, offset, length) == -1)
+    if (gvtrpCreate(&defaultTransport, &vmShm, offset, length) == -1)
     {
 	perror("gvtrpCreate");
 	return -1;
@@ -181,7 +175,7 @@ initProcess()
 	        if (initProcess() == -1)			\
 	        {						\
 	            pthread_mutex_unlock(&initProcessLock);	\
-	            /* return -1; */				\
+	            /* TODO ? */				\
 		    exit(2);					\
 	        }						\
             }							\
@@ -189,16 +183,24 @@ initProcess()
         }							\
     } while (0)
 
-#define initThreadIfNotDoneAlready()					     \
-    do {								     \
-	if (gvdisGetCurrent() == NULL)					     \
-	{								     \
-	    if (gvdisMakeCurrent(get(defaultDisplay, defaultContext)) == -1) \
-	    {								     \
-		/* return -1; */					     \
-		exit(2);						     \
-	    }								     \
-	}								     \
+#define initThreadIfNotDoneAlready()					 \
+    do {								 \
+	if (gvdisGetCurrent() == NULL)					 \
+	{								 \
+            struct Element *element;					 \
+									 \
+	    if ((element = get(defaultDisplay, defaultContext)) == NULL) \
+	    {								 \
+		/* TODO ? */						 \
+                exit(2);						 \
+	    }								 \
+									 \
+	    if (gvdisMakeCurrent(element->dispatcher) == -1)		 \
+	    {								 \
+		/* TODO ? */						 \
+		exit(2);						 \
+	    }								 \
+	}								 \
     } while (0)
 
 /* ***************************************************************************
@@ -219,6 +221,27 @@ initProcess()
 	    }							\
 	}							\
     } while (0)
+
+EGLBoolean
+doDestroyContext(int cancelThread, int cancelOnly,
+		 EGLDisplay display, EGLContext context)
+{			                                   
+    GVSERcallid callId;
+    EGLBoolean  status;
+
+    callId = gvserCall(GVSER_EGL_DESTROYCONTEXT);
+    gvserInData(&cancelThread, sizeof(int));
+    gvserInData(&cancelOnly,   sizeof(int));
+    gvserInData(&display,      sizeof(EGLDisplay));
+    gvserInData(&context,      sizeof(EGLContext));
+    gvserEndCall();
+
+    gvserReturn(callId);
+    gvserOutData(&status, sizeof(EGLBoolean));
+    gvserEndReturn();
+
+    return status;
+}
 
 EGLint
 eglGetError()
@@ -282,7 +305,7 @@ eglInitialize(EGLDisplay display, EGLint *major, EGLint *minor)
 }
 
 /*
- * TODO destroy resources if last display is terminated. What to do in case of
+ * TODO gvsrvAuRevoir if last display is terminated. What to do in case of
  * error?
  */
 EGLBoolean
@@ -301,6 +324,76 @@ eglTerminate(EGLDisplay display)
     gvserReturn(callId);
     gvserOutData(&status, sizeof(EGLBoolean));
     gvserEndReturn();
+
+    /* Destroy / mark for deletion all the transports and dispatchers which
+     * belong to the display.
+     */
+    if (status == EGL_SUCCESS)
+    {
+	struct Element *element, *tempElement;
+
+	HASH_ITER(hh, ctxDispMap, element, tempElement) {
+	    if (element->key.display == display)
+	    {
+		if (element->markCurrent)
+		{
+		    element->markDeleted = 1;
+		}
+		else
+		{
+		    GVDISdispatcherptr tempDispatcher;
+		    
+		    if ((tempDispatcher = gvdisGetCurrent()) == NULL)
+		    {
+			perror("gvdisGetCurrent");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    if (gvdisMakeCurrent(element->dispatcher) == -1)
+		    {
+			perror("gvdisMakeCurrent");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    if (doDestroyContext(
+			    1,
+			    1,
+			    element->key.display,
+			    element->key.context) != EGL_SUCCESS)
+		    {
+			perror("eglDestroyContext");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    if (gvdisMakeCurrent(tempDispatcher) == -1)
+		    {
+			perror("gvdisMakeCurrent");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    if (gvtrpDestroy(element->dispatcher->transport) == -1)
+		    {
+			perror("gvtrpDestroy");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    if (gvdisDestroy(element->dispatcher) == -1)
+		    {
+			perror("gvdisDestroy");
+			/* TODO ? */
+			exit(2);
+		    }
+
+		    del(element);
+		}
+	    }
+	}
+    }
 
     return status;
 }
@@ -609,6 +702,47 @@ eglReleaseThread(void)
     gvserOutData(&status, sizeof(EGLBoolean));
     gvserEndReturn();
 
+    /* Destroy transport */
+    if (status == EGL_SUCCESS)
+    {
+	struct Element *element;
+
+	EGLDisplay      display;
+	EGLContext      context;
+
+	/* TODO avoid RPC */
+	display = eglGetCurrentDisplay();
+	context = eglGetCurrentContext();
+	
+	element = get(display, context);
+
+	if (element->markDeleted)
+	{
+	    if (gvdisMakeCurrent(NULL) == -1)
+	    {
+		perror("gvdisMakeCurrent");
+		/* TODO ? */
+		exit(2);
+	    }
+
+	    if (gvtrpDestroy(element->dispatcher->transport) == -1)
+	    {
+		perror("gvtrpDestroy");
+		/* TODO ? */
+		exit(2);
+	    }
+
+	    if (gvdisDestroy(element->dispatcher) == -1)
+	    {
+		perror("gvdisDestroy");
+		/* TODO ? */
+		exit(2);
+	    }
+
+	    del(element);
+	}
+    }
+
     return status;
 }
 
@@ -756,20 +890,12 @@ eglCreateContext(EGLDisplay display, EGLConfig config, EGLContext shareContext, 
 EGLBoolean
 eglDestroyContext(EGLDisplay display, EGLContext context)
 {
-    GVSERcallid callId;
     EGLBoolean  status;
 
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    callId = gvserCall(GVSER_EGL_DESTROYCONTEXT);
-    gvserInData(&display, sizeof(EGLDisplay));
-    gvserInData(&context, sizeof(EGLContext));
-    gvserEndCall();
-
-    gvserReturn(callId);
-    gvserOutData(&status, sizeof(EGLBoolean));
-    gvserEndReturn();
+    status = doDestroyContext(1, 0, display, context);
 
     return status;
 }

@@ -25,7 +25,8 @@ typedef int GVSERcallid;
 #define GVSER_MMGR_ALLOC                         0
 #define GVSER_MMGR_FREE                          1
 
-#define GVSER_SRV_HANDSHAKE                      0
+#define GVSER_SRV_BONJOUR                        0
+#define GVSER_SRV_AUREVOIR                       1
 
 #define GVSER_EGL_GETERROR                       0
 #define GVSER_EGL_GETDISPLAY                     1

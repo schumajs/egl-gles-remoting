@@ -40,7 +40,7 @@ static struct Context *context;
  */
 
 static
-void _gvsrvHandshake()
+void _gvsrvBonjour()
 {
     GVSERcallid callId;
     int         status;
@@ -52,7 +52,23 @@ void _gvsrvHandshake()
     gvserInData(&length, sizeof(size_t));
     gvserEndCall();
 
-    status = gvsrvHandshake(offset, length);
+    status = gvsrvBonjour(offset, length);
+
+    gvserReturn(callId);
+    gvserOutData(&status, sizeof(int));
+    gvserEndReturn();
+}
+
+static
+void _gvsrvAuRevoir()
+{
+    GVSERcallid callId;
+    int         status;
+
+    callId = gvserCall();
+    gvserEndCall();
+
+    status = gvsrvAuRevoir();
 
     gvserReturn(callId);
     gvserOutData(&status, sizeof(int));
@@ -63,8 +79,9 @@ void _gvsrvHandshake()
  * Jump table
  */
 
-static GVDISfunc gvsrvJumpTable[1] = {
-    _gvsrvHandshake
+static GVDISfunc gvsrvJumpTable[2] = {
+    _gvsrvBonjour,
+    _gvsrvAuRevoir
 };
 
 /* ****************************************************************************
@@ -185,7 +202,7 @@ gvsrvCreate(GVSRVcontextptr *newServer, GVSHMshmptr vmShm)
 }
 
 int
-gvsrvHandshake(size_t offset, size_t length)
+gvsrvBonjour(size_t offset, size_t length)
 {
     GVTRPtransportptr  transport;
     GVDISdispatcherptr dispatcher;
@@ -207,6 +224,31 @@ gvsrvHandshake(size_t offset, size_t length)
     {
 	perror("gvdisDispatchLoop");
 	exit(2);
+    }
+
+    return 0;
+}
+
+int
+gvsrvAuRevoir()
+{
+    GVDISdispatcherptr dispatcher;
+
+    if ((dispatcher = gvdisGetCurrent()) == NULL)
+    {
+	return -1;
+    }
+
+    if (gvtrpDestroy(dispatcher->transport) == -1)
+    {
+	perror("gvtrpDestroy");
+	return -1;
+    }
+
+    if (gvdisDestroy(dispatcher) == -1)
+    {
+	perror("gvtrpDestroy");
+	return -1;
     }
 
     return 0;
