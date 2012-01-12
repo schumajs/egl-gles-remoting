@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    memory_manager.h
+ * \file    heap_manager.h
  * \brief   
  * 
  * \date    December 25, 2011
@@ -9,41 +9,37 @@
  * \details
  */
 
-#ifndef SERVER_MEMORY_MANAGER_H_
-#define SERVER_MEMORY_MANAGER_H_
+#ifndef SERVER_HEAP_MANAGER_H_
+#define SERVER_HEAP_MANAGER_H_
 
 #include <unistd.h>
 
-#include "memory_manager.h"
-
+#include "heap_manager.h"
 
 #include "../shared_memory.h"
 
-struct GVMMGRcontext {
-    GVSHMshmptr vmShm;
-    size_t      vmShmSize;
-
-    GVSHMshmptr mmgrShm;
-    size_t      mmgrShmSize;
+struct GVheapmgr {
+    GVshmptr vmShm;
+    GVshmptr heapMgrShm;
 };
 
-typedef struct GVMMGRcontext *GVMMGRcontextptr;
+typedef struct GVheapmgr *GVheapmgrptr;
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newMmgr
+ * \param  [out] newHeapMgr
  * \param  [in]  heapSize
  * \return 
  */
-int gvmmgrCreate(GVMMGRcontextptr *newMmgr, size_t heapSize);
+int gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] mmgr
+ * \param  [in] heapMgr
  * \return 
  */
-int gvmmgrDestroy(GVMMGRcontextptr mmgr);
+int gvStopHeapMgr(GVheapmgrptr heapMgr);
 
-#endif /* SERVER_MEMORY_MANAGER_H_ */
+#endif /* SERVER_HEAP_MANAGER_H_ */

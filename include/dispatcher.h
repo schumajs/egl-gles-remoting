@@ -9,20 +9,16 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvdis
- */
-
 #ifndef DISPATCHER_H_
 #define DISPATCHER_H_
 
 #include "transport.h"
 
-struct GVDISdispatcher {
-    GVTRPtransportptr transport;
+struct GVdispatcher {
+    GVtransportptr transport;
 };
 
-typedef struct GVDISdispatcher *GVDISdispatcherptr;
+typedef struct GVdispatcher *GVdispatcherptr;
 
 /*! ***************************************************************************
  * \brief
@@ -31,14 +27,15 @@ typedef struct GVDISdispatcher *GVDISdispatcherptr;
  * \param  [in]  transport
  * \return 
  */
-int gvdisCreate(GVDISdispatcherptr *newDispatcher, GVTRPtransportptr transport);
+int gvCreateDispatcher(GVdispatcherptr *newDispatcher,
+		       GVtransportptr   transport);
 
 /*! ***************************************************************************
  * \brief 
  *
  * \return 
  */
-GVDISdispatcherptr gvdisGetCurrent(void);
+GVdispatcherptr gvGetCurrent(void);
 
 /*! ***************************************************************************
  * \brief 
@@ -46,7 +43,7 @@ GVDISdispatcherptr gvdisGetCurrent(void);
  * \param  [in] context
  * \return 
  */
-int gvdisMakeCurrent(GVDISdispatcherptr context);
+int gvMakeCurrent(GVdispatcherptr dispatcher);
 
 /*! ***************************************************************************
  * \brief
@@ -54,6 +51,6 @@ int gvdisMakeCurrent(GVDISdispatcherptr context);
  * \param  [in] context
  * \return 
  */
-int gvdisDestroy(GVDISdispatcherptr context);
+int gvDestroyDispatcher(GVdispatcherptr dispatcher);
 
 #endif  /* DISPATCHER_H_ */

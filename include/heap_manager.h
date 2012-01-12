@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    memory_manager.h
+ * \file    heap_manager.h
  * \brief   
  * 
  * \date    December 14, 2011
@@ -9,12 +9,8 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvmmgr
- */
-
-#ifndef MEMORY_MANAGER_H_
-#define MEMORY_MANAGER_H_
+#ifndef HEAP_MANAGER_H_
+#define HEAP_MANAGER_H_
 
 #include <unistd.h>
 
@@ -25,7 +21,7 @@
  * \param [in]  length
  * \return
  */
-int gvmmgrAlloc(size_t *offset, size_t length);
+int gvAlloc(size_t *offset, size_t  length);
 
 /*! ***************************************************************************
  * \brief
@@ -33,6 +29,6 @@ int gvmmgrAlloc(size_t *offset, size_t length);
  * \param [out] data
  * \return
  */
-int gvmmgrFree(size_t offset);
+int gvFree(size_t offset);
 
-#endif /* MEMORY_MANAGER_H */
+#endif /* HEAP_MANAGER_H */

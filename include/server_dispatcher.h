@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    dispatcher.h
+ * \file    server_dispatcher.h
  * \brief
  * 
  * \date    January 9, 2011
@@ -16,16 +16,18 @@
 
 #include "../dispatcher.h" 
 
-typedef void (*GVDISfunc)(void);
+typedef void (*GVdispatchfunc)(void);
 
 /*! ***************************************************************************
  * \brief
  *
  * \param  [in] dispatcher
  * \param  [in] jumpTable
- * \param  [in] join
+ * \param  [in] joinThread
  * \return
  */
-int gvdisDispatchLoop(GVDISdispatcherptr dispatcher, GVDISfunc jumpTable[], int join);
+int gvDispatchLoop(GVdispatcherptr   dispatcher,
+		   GVDISdispatchfunc jumpTable[],
+		   int               joinThread);
 
 #endif /* SERVER_DISPATCHER_H_ */

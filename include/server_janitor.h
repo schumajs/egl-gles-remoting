@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    server.h
+ * \file    server_janitor.h
  * \brief   
  * 
  * \date    December 25, 2011
@@ -9,19 +9,18 @@
  * \details
  */
 
-#ifndef SERVER_SERVER_H_
-#define SERVER_SERVER_H_
+#ifndef SERVER_JANITOR_H_
+#define SERVER_JANITOR_H_
 
 #include "shared_memory.h"
 
 #include "../server.h"
 
-struct GVSRVcontext {
-    GVSHMshmptr srvShm;
-    size_t      srvShmSize;
+struct GVjanitor {
+    GVshmptr janitorShm;
 };
 
-typedef struct GVSRVcontext *GVSRVcontextptr;
+typedef struct GVjanitor *GVjanitorptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -30,7 +29,7 @@ typedef struct GVSRVcontext *GVSRVcontextptr;
  * \param  [in]  vmShm
  * \return 
  */
-int gvsrvCreate(GVSRVcontextptr *newServer, GVSHMshmptr vmShm);
+int gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm);
 
 /*! ***************************************************************************
  * \brief 
@@ -38,6 +37,6 @@ int gvsrvCreate(GVSRVcontextptr *newServer, GVSHMshmptr vmShm);
  * \param  [in] server
  * \return 
  */
-int gvsrvDestroy(GVSRVcontextptr server);
+int gvStopJanitor(GVjanitorptr server);
 
-#endif /* SERVER_SERVER_H_ */
+#endif /* SERVER_JANITOR_H_ */

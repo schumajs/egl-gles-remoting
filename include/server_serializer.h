@@ -1,26 +1,25 @@
 /*! ***************************************************************************
- * \file    serializer.h
+ * \file    server_serializer.h
  * \brief
  * 
- * \date    December 13, 2011
+ * \date    December 27, 2011
  * \author  Jens Schumann
  *          schumajs@googlemail.com
  *
  * \details
  */
 
-#ifndef CLIENT_SERIALZIER_H_
-#define CLIENT_SERIALIZER_H
+#ifndef SERVER_SERIALIZER_H_
+#define SERVER_SERIALIZER_H_
 
 #include "../serializer.h"
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] cmdId
  * \return
  */
-GVSERcallid gvserCall(GVSERcmdid cmdId);
+GVcallid gvCall();
 
 /*! ***************************************************************************
  * \brief
@@ -28,31 +27,31 @@ GVSERcallid gvserCall(GVSERcmdid cmdId);
  * \param [in] data
  * \param [in] length
  */
-void gvserInData(const void *data, size_t length);
+void gvGetData(void *data, size_t length);
 
 /*! ***************************************************************************
  * \brief
  */
-void gvserEndCall();
+void gvEndCall();
 
 /*! ***************************************************************************
  * \brief
  *
  * \param [in] callId
  */
-void gvserReturn(GVSERcallid callId);
+void gvReturn(GVcallid callId);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param [out] data
- * \param [in]  length
+ * \param [in] data
+ * \param [in] length
  */
-void gvserOutData(void *data, size_t length);
+void gvPutData(const void *data, size_t length);
 
 /*! ***************************************************************************
  * \brief
  */
-void gvserEndReturn();
+void gvEndReturn();
 
-#endif /* CLIENT_SERIALIZER_H_ */
+#endif /* SERVER_SERIALIZER_H_ */

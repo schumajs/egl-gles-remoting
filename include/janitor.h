@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    server.h
+ * \file    janitor.h
  * \brief   
  * 
  * \date    January 6, 2011
@@ -9,14 +9,10 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvsrv
- */
-
 #include <unistd.h>
 
-#ifndef SERVER_H_
-#define SERVER_H_
+#ifndef JANITOR_H_
+#define JANITOR_H_
 
 /*! ***************************************************************************
  * \brief 
@@ -25,13 +21,13 @@
  * \param  [in] length
  * \return 
  */
-int gvsrvBonjour(size_t offset, size_t length);
+int gvBonjour(size_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
  *
  * \return 
  */
-int gvsrvAuRevoir(void);
+int gvAuRevoir(void);
 
-#endif /* SERVER_H_ */
+#endif /* JANITOR_H_ */

@@ -9,10 +9,6 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvslp
- */
-
 #ifndef SLEEP_H_
 #define SLEEP_H_
 
@@ -23,6 +19,6 @@
  * \param  [in]  nsec
  * \return 
  */
-int gvslpSleep(int sec, int nsec);
+int gvSleep(int sec, int nsec);
 
 #endif /* SLEEP_H */

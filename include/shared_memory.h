@@ -9,17 +9,19 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvshm
- */
-
 #ifndef SHARED_MEMORY_H_
 #define SHARED_MEMORY_H_
 
 #include <unistd.h>
 
-typedef int GVSHMshm; 
-typedef GVSHMshm *GVSHMshmptr;
+typedef int GVshmid;
+
+typedef struct GVshm {
+    GVshmid id;
+    size_t  size;
+}
+ 
+typedef GVshm *GVshmptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -28,7 +30,7 @@ typedef GVSHMshm *GVSHMshmptr;
  * \param  [in]  shmSize
  * \return 
  */
-int gvshmCreate(GVSHMshmptr *newShm, size_t shmSize);
+int gvCreateShm(GVshmptr *newShm, size_t shmSize);
 
 /*! ***************************************************************************
  * \brief 
@@ -39,7 +41,7 @@ int gvshmCreate(GVSHMshmptr *newShm, size_t shmSize);
  * \param  [in] length
  * \return 
  */
-int gvshmAttach(void *toAddr, GVSHMshmptr shm, off_t offset, size_t length);
+int gvAttachShm(void *toAddr, GVshmptr shm, off_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -50,7 +52,7 @@ int gvshmAttach(void *toAddr, GVSHMshmptr shm, off_t offset, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvshmDetach(void *fromAddr, GVSHMshmptr shm, off_t offset, size_t length);
+int gvDetachShm(void *fromAddr, GVshmptr shm, off_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -58,6 +60,6 @@ int gvshmDetach(void *fromAddr, GVSHMshmptr shm, off_t offset, size_t length);
  * \param  [in] shm
  * \return
  */
-int gvshmDestroy(GVSHMshmptr shm);
+int gvDestroyShm(GVSHMshmptr shm);
 
 #endif /* SHARED_MEMORY_H */

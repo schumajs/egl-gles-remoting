@@ -27,7 +27,7 @@ VER_REV  := 1
 SH_TAR := sharedlib
 SH_BIN := gvshared
 
-SH_C0_OBJS  := dispatcher.0.o lock.0.o shared_memory.0.o sleep.0.o transport.0.o
+SH_C0_OBJS  := src/thread_binding.0.c
 SH_C1_OBJS  :=
 
 ###############################################################################
@@ -36,7 +36,7 @@ SH_C1_OBJS  :=
 CL_TAR := clientlib
 CL_BIN := gvclient
 
-CL_C0_OBJS  := client/dispatcher.0.o client/egl_gles.0.o client/memory_manager.0.o client/server.0.o
+CL_C0_OBJS  := 
 CL_C1_OBJS  :=
 
 ###############################################################################
@@ -45,7 +45,7 @@ CL_C1_OBJS  :=
 SL_TAR := serverlib
 SL_BIN := gvserver
 
-SL_C0_OBJS  := server/dispatcher.0.o server/egl_gles.0.o server/memory_manager.0.o server/server.0.o
+SL_C0_OBJS  := 
 SL_C1_OBJS  :=
 
 ###############################################################################

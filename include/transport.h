@@ -9,33 +9,29 @@
  * \details
  */
 
-/*! ***************************************************************************
- * \namespace gvtrp
- */
-
 #ifndef TRANSPORT_H_
 #define TRANSPORT_H_
 
 #include "lock.h"
 #include "shared_memory.h"
 
-struct GVTRPbuffer {
+struct GVbuffer {
     GVlockptr clientLock;
     GVlockptr serverLock;
 };
 
-typedef struct GVTRPbuffer *GVTRPbufferptr;
+typedef struct GVbuffer *GVbufferptr;
 
-struct GVTRPtransport {
-    GVSHMshmptr    shm;
-    size_t         offset;
-    size_t         length;
+struct GVtransport {
+    GVshmptr    shm;
+    size_t      offset;
+    size_t      length;
 
-    GVTRPbufferptr callBuffer;
-    GVTRPbufferptr returnBuffer;
+    GVbufferptr callBuffer;
+    GVbufferptr returnBuffer;
 };
 
-typedef struct GVTRPtransport *GVTRPtransportptr;
+typedef struct GVtransport *GVtransportptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -46,8 +42,8 @@ typedef struct GVTRPtransport *GVTRPtransportptr;
  * \param  [in]  length
  * \return 
  */
-int gvtrpCreate(GVTRPtransportptr *newTransport,
-		GVSHMshmptr shm, size_t offset, size_t length);
+int gvCreateTransport(GVtransportptr *newTransport,
+		      GVshmptr shm, size_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -56,7 +52,7 @@ int gvtrpCreate(GVTRPtransportptr *newTransport,
  * \param  [out] spacePtr
  * \return 
  */
-int gvtrpSpacePtr(GVTRPbufferptr buffer, void **spacePtr);
+int gvSpacePtr(GVbufferptr buffer, void **spacePtr);
 
 /*! ***************************************************************************
  * \brief 
@@ -65,7 +61,7 @@ int gvtrpSpacePtr(GVTRPbufferptr buffer, void **spacePtr);
  * \param  [out] length
  * \return 
  */
-int gvtrpSpaceLength(GVTRPbufferptr buffer, size_t *length);
+int gvSpaceLength(GVbufferptr buffer, size_t *length);
 
 /*! ***************************************************************************
  * \brief 
@@ -74,7 +70,7 @@ int gvtrpSpaceLength(GVTRPbufferptr buffer, size_t *length);
  * \param  [in] length
  * \return 
  */
-int gvtrpGive(GVTRPbufferptr buffer, size_t length);
+int gvGive(GVbufferptr buffer, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -84,7 +80,7 @@ int gvtrpGive(GVTRPbufferptr buffer, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvtrpRead(GVTRPbufferptr buffer, void *addr, size_t length);
+int gvRead(GVbufferptr buffer, void *addr, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -93,7 +89,7 @@ int gvtrpRead(GVTRPbufferptr buffer, void *addr, size_t length);
  * \param  [out] dataPtr
  * \return 
  */
-int gvtrpDataPtr(GVTRPbufferptr buffer, void **dataPtr);
+int gvDataPtr(GVbufferptr buffer, void **dataPtr);
 
 /*! ***************************************************************************
  * \brief 
@@ -102,7 +98,7 @@ int gvtrpDataPtr(GVTRPbufferptr buffer, void **dataPtr);
  * \param  [out] length
  * \return 
  */
-int gvtrpDataLength(GVTRPbufferptr buffer, size_t *length);
+int gvDataLength(GVbufferptr buffer, size_t *length);
 
 /*! ***************************************************************************
  * \brief 
@@ -111,7 +107,7 @@ int gvtrpDataLength(GVTRPbufferptr buffer, size_t *length);
  * \param  [in] length
  * \return 
  */
-int gvtrpTake(GVTRPbufferptr buffer, size_t length);
+int gvTake(GVbufferptr buffer, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -121,7 +117,7 @@ int gvtrpTake(GVTRPbufferptr buffer, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvtrpWrite(GVTRPbufferptr buffer, const void *addr, size_t length);
+int gvWrite(GVbufferptr buffer, const void *addr, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -129,6 +125,6 @@ int gvtrpWrite(GVTRPbufferptr buffer, const void *addr, size_t length);
  * \param  [in] transport
  * \return 
  */
-int gvtrpDestroy(GVTRPtransportptr transport);
+int gvDestroy(GVtransportptr transport);
 
 #endif /* TRANSPORT_H */

@@ -1,60 +1,58 @@
 /*! ***************************************************************************
- * \file    lock.h
+ * \file    thread_binding.h
  * \brief   
  * 
- * \date    December 20, 2011
+ * \date    January 12, 2011
  * \author  Jens Schumann
  *          schumajs@googlemail.com
  *
  * \details
  */
 
-#ifndef LOCK_H_
-#define LOCK_H_
+#ifndef THREAD_BINDING_H_
+#define THREAD_BINDING_H_
 
-#include <pthread.h>
+struct GVbinding {
+    void *data;
+};
 
-typedef pthread_mutex_t GVlock; 
-typedef GVlock *GVlockptr;
-
-/*! ***************************************************************************
- * \brief 
- *
- * \param  [out] newLock
- * \return
- */
-int gvCreateLock(GVlockptr *newLock);
+typedef struct GVbinding *GVbindingptr;
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] lock
- * \return
+ * \param  [out] newBinding
+ * \param  [in]  data
+ * \return 
  */
-int gvAcquire(GVlockptr lock);
+int gvCreateBinding(GVbindingptr *newBinding, void *data);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] lock
- * \return
+ * \return 
  */
-int gvTryToAcquire(GVlockptr lock);
+int gvBind(GVbindingptr binding);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] lock 
- * \return
+ * \return 
  */
-int gvRelease(GVlockptr lock);
+GVbindingptr gvGetBinding(void);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in] lock
- * \return
+ * \return 
  */
-int gvDestroyLock(GVlockptr lock);
+int gvUnbind(GVbindingptr binding);
 
-#endif /* LOCK_H */
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \return 
+ */
+int gvDestroyBinding(GVbindingptr binding);
+
+#endif /* THREAD_BINDING_H_ */
