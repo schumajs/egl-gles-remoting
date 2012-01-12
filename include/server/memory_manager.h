@@ -14,7 +14,9 @@
 
 #include <unistd.h>
 
-#include "../memory_manager.h"
+#include "memory_manager.h"
+
+
 #include "../shared_memory.h"
 
 struct GVMMGRcontext {
