@@ -19,6 +19,8 @@
  * \param  [in]  nsec
  * \return 
  */
-int gvSleep(int sec, int nsec);
+int
+gvSleep(int sec,
+	int nsec);
 
 #endif /* SLEEP_H */

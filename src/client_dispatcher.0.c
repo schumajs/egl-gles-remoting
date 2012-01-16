@@ -16,9 +16,6 @@
 
 #include "client_state_tracker.h"
 #include "error.h"
-#include "lock.h"
-#include "serializer.h"
-#include "sleep.h"
 
 /* ***************************************************************************
  * State tracking
@@ -63,7 +60,8 @@ hashGet(EGLDisplay display,
     pattern.context.display = display;
     pattern.context.context = context;
 
-    HASH_FIND(hh, threadStateHash, &pattern.context, sizeof(struct Context), state);
+    HASH_FIND(hh, threadStateHash, &pattern.context, sizeof(struct Context),
+	      state);
 
     return state;
 }
@@ -139,8 +137,8 @@ gvInitStateTracker()
 }
 
 int
-gvTrackContext(EGLDisplay display,
-	       EGLContext context)
+gvTrack(EGLDisplay display,
+	EGLContext context)
 {
     ThreadStatePtr state;
 
@@ -194,8 +192,8 @@ gvTrackContext(EGLDisplay display,
 }
 
 int
-gvUntrackContext(EGLDisplay display,
-		 EGLContext context)
+gvUntrack(EGLDisplay display,
+	  EGLContext context)
 {
     ThreadStatePtr state;
 
@@ -510,235 +508,6 @@ gvTerminateStateTracker()
 	pthread_mutex_unlock(&initTerminateLock);
 	return -1;
     } 
-
-    return 0;
-}
-
-/* ****************************************************************************
- * Client serializer implementation
- */
-
-#define getCantorPair(k1, k2) \
-    0.5 * ((k1 + k2) * (k1 + k2 + 1) + k2)
-
-GVcallid
-gvCall(GVcmdid cmdId)
-{
-    GVcallid       callId;
-    ThreadStatePtr state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	if (gvAcquire(state->transport->callBuffer->clientLock) == -1)
-	{
-	    THROW(e0, "gvAcquire");
-	}
-	
-	/* TODO replace cantor pairing function, pthread_self is UL,
-	 * syscall(SYS_gettid) is TID!
-	 */
-	{
-	    pid_t     pid = getpid();
-	    pthread_t tid = pthread_self();
-
-	    callId = getCantorPair(pid, tid);
-	}
-
-	if (gvWrite(state->transport->callBuffer,
-		    &cmdId, sizeof(GVcmdid)) == -1)
-	{
-	    THROW(e1, "gvWrite");
-	}
-
-	if (gvWrite(state->transport->callBuffer,
-		    &callId, sizeof(GVcallid)) == -1)
-	{
-	    THROW(e1, "gvWrite");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-    CATCH (e1)
-    {
-	gvRelease(state->transport->callBuffer->clientLock);
-	return -1;
-    }
-    
-    return 0;
-}
-
-int
-gvEndCall()
-{
-    ThreadStatePtr state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	if (gvRelease(state->transport->callBuffer->clientLock) == -1)
-	{
-	    THROW(e0, "gvRelease");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvReturn(GVcallid callId)
-{
-    void           *dataPtr;
-    size_t          dataLength;
-    ThreadStatePtr  state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	while (1)
-	{
-	    if (gvAcquire(state->transport->returnBuffer->clientLock) == -1)
-	    {
-		THROW(e0, "gvAcquire");
-	    }
-
-	    if (gvDataLength(state->transport->returnBuffer,
-			     &dataLength) == -1)
-            {
-		THROW(e1, "gvDataLength");
-	    }
-
-	    if (dataLength >= sizeof(GVcallid))
-	    {
-		if (gvDataPtr(state->transport->returnBuffer, &dataPtr) == -1)
-		{
-		    THROW(e1, "gvDataPtr");
-		}
-	    
-		if (*((GVcallid *)dataPtr) == callId)
-		{
-		    if (gvTake(state->transport->returnBuffer,
-			       sizeof(GVcallid)) == -1)
-		    {
-			THROW(e1, "gvTake");
-		    }
-
-		    break;
-		}
-	    }
-
-	    if (gvRelease(state->transport->returnBuffer->clientLock) == -1)
-	    {
-		THROW(e1, "gvRelease");
-	    }
-
-	    gvSleep(0, 1000);
-        }
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-    CATCH (e1)
-    {
-	gvRelease(state->transport->returnBuffer->clientLock);
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvEndReturn()
-{
-    ThreadStatePtr state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	if (gvRelease(state->transport->returnBuffer->clientLock) == -1)
-	{
-	    THROW(e0, "gvRelease");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvGetData(void   *data,
-	  size_t  length)
-{
-    ThreadStatePtr state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	if (gvRead(state->transport->returnBuffer, data, length) == -1)
-	{
-	    THROW(e0, "gvRead");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvPutData(const void *data,
-          size_t      length)
-{
-    ThreadStatePtr state; 
-
-    TRY ()
-    {
-	if ((state = getCurrentThreadState()) == NULL)
-	{
-	    THROW(e0, "no current context");
-	}
-
-	if (gvWrite(state->transport->callBuffer, data, length) == -1)
-	{
-	    THROW(e0, "gvWrite");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
 
     return 0;
 }

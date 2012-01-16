@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    heap_manager.h
+ * \file    server_heap_manager.h
  * \brief   
  * 
  * \date    December 25, 2011
@@ -16,7 +16,7 @@
 
 #include "shared_memory.h"
 
-#include "../heap_manager.h"
+#include "./heap_manager.h"
 
 struct GVheapmgr {
     GVshmptr vmShm;
@@ -32,7 +32,9 @@ typedef struct GVheapmgr *GVheapmgrptr;
  * \param  [in]  heapSize
  * \return 
  */
-int gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize);
+int
+gvStartHeapMgr(GVheapmgrptr *newHeapMgr,
+	       size_t        heapSize);
 
 /*! ***************************************************************************
  * \brief 
@@ -40,6 +42,7 @@ int gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize);
  * \param  [in] heapMgr
  * \return 
  */
-int gvStopHeapMgr(GVheapmgrptr heapMgr);
+int
+gvStopHeapMgr(GVheapmgrptr heapMgr);
 
 #endif /* SERVER_HEAP_MANAGER_H_ */

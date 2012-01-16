@@ -21,7 +21,9 @@
  * \param [in]  length
  * \return
  */
-int gvAlloc(size_t *offset, size_t  length);
+int
+gvAlloc(size_t *offset,
+	size_t  length);
 
 /*! ***************************************************************************
  * \brief
@@ -29,6 +31,7 @@ int gvAlloc(size_t *offset, size_t  length);
  * \param [out] data
  * \return
  */
-int gvFree(size_t offset);
+int
+gvFree(size_t offset);
 
 #endif /* HEAP_MANAGER_H */

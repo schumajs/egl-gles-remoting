@@ -1,40 +1,25 @@
-
-#include <stdio.h>
-#include <EGL/egl.h>
-
-#define TRY(lbl)
-#define THROW(to, msg) perror(msg); goto to
-#define CATCH(to) while (0) to:
+#include "error.h"
+#include "janitor.h"
 
 int main()
 {
     TRY ()
     {
-	if (0)
+	int status = 1;
+
+	if ((status = gvBonjour(4096, 3 * 4096)) == -1)
 	{
-	    THROW(c0, "ERROR1");
+	    THROW(e0, "gvBonjour");
 	}
 
-	if (0)
-	{
-	    THROW(c0, "ERROR2");
-	}
-
-	if (1)
-	{
-	    THROW(c1, "ERROR3");
-	}
+	printf("STATUS %i\n", status);
     }
-    CATCH (c0)
+    CATCH (e0)
     {
-	puts("Drinnen 1");
-    }
-    CATCH (c1)
-    {
-	puts("Drinnen 2");
+	puts("ERROR");
     }
 
-    puts("Und draussen");
+    puts("SUCCESS");
 
     return 0;
 }

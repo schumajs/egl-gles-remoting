@@ -9,6 +9,7 @@
  * \details
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <vrb.h>
@@ -213,6 +214,7 @@ gvCreateTransport(GVtransportptr *newTransport,
 	 */
 	if (!(length > 0 && BUFFER_TAIL_SIZE(length) % systemPageSize == 0))
 	{
+	    errno = EINVAL;
 	    THROW(e0, "invalid length");
 	}
 

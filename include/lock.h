@@ -23,7 +23,8 @@ typedef GVlock *GVlockptr;
  * \param  [out] newLock
  * \return
  */
-int gvCreateLock(GVlockptr *newLock);
+int
+gvCreateLock(GVlockptr *newLock);
 
 /*! ***************************************************************************
  * \brief 
@@ -31,7 +32,8 @@ int gvCreateLock(GVlockptr *newLock);
  * \param  [in] lock
  * \return
  */
-int gvAcquire(GVlockptr lock);
+int
+gvAcquire(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -39,7 +41,8 @@ int gvAcquire(GVlockptr lock);
  * \param  [in] lock
  * \return
  */
-int gvTryToAcquire(GVlockptr lock);
+int
+gvTryToAcquire(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -47,7 +50,8 @@ int gvTryToAcquire(GVlockptr lock);
  * \param  [in] lock 
  * \return
  */
-int gvRelease(GVlockptr lock);
+int
+gvRelease(GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -55,6 +59,7 @@ int gvRelease(GVlockptr lock);
  * \param  [in] lock
  * \return
  */
-int gvDestroyLock(GVlockptr lock);
+int
+gvDestroyLock(GVlockptr lock);
 
 #endif /* LOCK_H */

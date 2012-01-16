@@ -12,14 +12,17 @@
 #ifndef SERIALZIER_H
 #define SERIALIZER_H
 
+#include "lock.h"
+#include "transport.h"
+
 typedef int GVcmdid;
 typedef int GVcallid;
 
-#define GV_CMDID_MMGR_ALLOC                        0x00
-#define GV_CMDID_MMGR_FREE                         0x01
+#define GV_CMDID_HMGR_ALLOC                         0x0
+#define GV_CMDID_HMGR_FREE                          0x1
 
-#define GV_CMDID_SRV_BONJOUR                       0x00
-#define GV_CMDID_SRV_AUREVOIR                      1x00
+#define GV_CMDID_JANITOR_BONJOUR                    0x0
+#define GV_CMDID_JANITOR_AUREVOIR                   0x1
 
 #define GV_CMDID_RESERVED_0                        0x00
 #define GV_CMDID_RESERVED_1                        0x01
@@ -69,47 +72,78 @@ typedef int GVcallid;
 /*! ***************************************************************************
  * \brief 
  *
+ * \param  [in]     transport
+ * \param  [in]     lock
+ * \param  [in,out] cmdId
+ * \param  [in,out] callId
  * \return
  */
-GVcallid
-gvCall();
-
-/*! ***************************************************************************
- * \brief
- */
 int
-gvEndCall();
-
-/*! ***************************************************************************
- * \brief
- *
- * \param [in] callId
- */
-int
-gvReturn(GVcallid callId);
-
-/*! ***************************************************************************
- * \brief
- */
-int
-gvEndReturn();
+gvCall(GVtransportptr  transport,
+       GVlockptr       lock,
+       GVcmdid        *cmdId,
+       GVcallid       *callId);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param [in] data
- * \param [in] length
+ * \param  [in] transport
+ * \param  [in] lock
+ * \return
  */
 int
-gvGetData(void *data, size_t length);
+gvEndCall(GVtransportptr transport,
+	  GVlockptr      lock);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param [in] data
- * \param [in] length
+ * \param  [in]     transport
+ * \param  [in]     lock
+ * \param  [in,out] callId
  */
 int
-gvPutData(const void *data, size_t length);
+gvReturn(GVtransportptr  transport,
+	 GVlockptr       lock,
+	 GVcallid       *callId);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \param  [in] lock
+ * \return
+ */
+int
+gvEndReturn(GVtransportptr transport,
+	    GVlockptr      lock);
+
+/*! ***************************************************************************
+ * \brief
+ * 
+ * \param  [in]  transport
+ * \param  [in]  lock
+ * \param  [out] data
+ * \param  [in]  length
+ * \return
+ */
+int
+gvGetData(GVtransportptr  transport,
+	  void           *data,
+	  size_t          length);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \param  [in] lock
+ * \param  [in] data
+ * \param  [in] length
+ * \return
+ */
+int
+gvPutData(GVtransportptr  transport,
+	  const void     *data,
+	  size_t          length);
 
 #endif /* SERIALIZER_H */

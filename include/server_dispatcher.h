@@ -24,8 +24,9 @@ typedef void (*GVdispatchfunc)(void);
  * \param  [in] joinThread
  * \return
  */
-int gvDispatchLoop(GVdispatcherptr   dispatcher,
-		   GVDISdispatchfunc jumpTable[],
-		   int               joinThread);
+int
+gvDispatchLoop(GVtransportptr transport,
+	       GVdispatchfunc jumpTable[],
+	       int            joinThread);
 
 #endif /* SERVER_DISPATCHER_H_ */

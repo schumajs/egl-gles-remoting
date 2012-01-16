@@ -42,8 +42,11 @@ typedef struct GVtransport *GVtransportptr;
  * \param  [in]  length
  * \return 
  */
-int gvCreateTransport(GVtransportptr *newTransport,
-		      GVshmptr shm, size_t offset, size_t length);
+int
+gvCreateTransport(GVtransportptr *newTransport,
+		  GVshmptr        shm,
+		  size_t          offset,
+		  size_t          length);
 
 /*! ***************************************************************************
  * \brief 
@@ -52,7 +55,9 @@ int gvCreateTransport(GVtransportptr *newTransport,
  * \param  [out] spacePtr
  * \return 
  */
-int gvSpacePtr(GVbufferptr buffer, void **spacePtr);
+int
+gvSpacePtr(GVbufferptr   buffer,
+	   void        **spacePtr);
 
 /*! ***************************************************************************
  * \brief 
@@ -61,7 +66,9 @@ int gvSpacePtr(GVbufferptr buffer, void **spacePtr);
  * \param  [out] length
  * \return 
  */
-int gvSpaceLength(GVbufferptr buffer, size_t *length);
+int
+gvSpaceLength(GVbufferptr  buffer,
+	      size_t      *length);
 
 /*! ***************************************************************************
  * \brief 
@@ -70,7 +77,9 @@ int gvSpaceLength(GVbufferptr buffer, size_t *length);
  * \param  [in] length
  * \return 
  */
-int gvGive(GVbufferptr buffer, size_t length);
+int
+gvGive(GVbufferptr buffer,
+       size_t      length);
 
 /*! ***************************************************************************
  * \brief 
@@ -80,7 +89,10 @@ int gvGive(GVbufferptr buffer, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvRead(GVbufferptr buffer, void *addr, size_t length);
+int
+gvRead(GVbufferptr  buffer,
+       void        *addr,
+       size_t       length);
 
 /*! ***************************************************************************
  * \brief 
@@ -89,7 +101,9 @@ int gvRead(GVbufferptr buffer, void *addr, size_t length);
  * \param  [out] dataPtr
  * \return 
  */
-int gvDataPtr(GVbufferptr buffer, void **dataPtr);
+int
+gvDataPtr(GVbufferptr   buffer,
+	  void        **dataPtr);
 
 /*! ***************************************************************************
  * \brief 
@@ -98,7 +112,9 @@ int gvDataPtr(GVbufferptr buffer, void **dataPtr);
  * \param  [out] length
  * \return 
  */
-int gvDataLength(GVbufferptr buffer, size_t *length);
+int
+gvDataLength(GVbufferptr  buffer,
+	     size_t      *length);
 
 /*! ***************************************************************************
  * \brief 
@@ -107,7 +123,9 @@ int gvDataLength(GVbufferptr buffer, size_t *length);
  * \param  [in] length
  * \return 
  */
-int gvTake(GVbufferptr buffer, size_t length);
+int
+gvTake(GVbufferptr buffer,
+       size_t      length);
 
 /*! ***************************************************************************
  * \brief 
@@ -117,7 +135,10 @@ int gvTake(GVbufferptr buffer, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvWrite(GVbufferptr buffer, const void *addr, size_t length);
+int
+gvWrite(GVbufferptr  buffer,
+	const void  *addr,
+	size_t       length);
 
 /*! ***************************************************************************
  * \brief 
@@ -125,6 +146,7 @@ int gvWrite(GVbufferptr buffer, const void *addr, size_t length);
  * \param  [in] transport
  * \return 
  */
-int gvDestroy(GVtransportptr transport);
+int
+gvDestroyTransport(GVtransportptr transport);
 
 #endif /* TRANSPORT_H */

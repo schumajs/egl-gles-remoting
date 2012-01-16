@@ -53,7 +53,7 @@ gvCreateLock(GVlockptr *newLock)
 }
 
 int
-gvlckAcquire(GVlockptr lock)
+gvAcquire(GVlockptr lock)
 {
     TRY ()
     {
@@ -71,7 +71,7 @@ gvlckAcquire(GVlockptr lock)
 }
 
 int
-gvTryToAcquireLock(GVlockptr lock)
+gvTryToAcquire(GVlockptr lock)
 {
     TRY ()
     {
@@ -89,7 +89,7 @@ gvTryToAcquireLock(GVlockptr lock)
 }
 
 int
-gvReleaseLock(GVlockptr lock)
+gvRelease(GVlockptr lock)
 {
     TRY ()
     {
@@ -107,7 +107,7 @@ gvReleaseLock(GVlockptr lock)
 }
 
 int
-gvlckDestroy(GVlockptr lock)
+gvDestroyLock(GVlockptr lock)
 {
     TRY ()
     {

@@ -32,8 +32,8 @@ gvInitStateTracker();
  * \return 
  */
 int
-gvTrackContext(EGLDisplay display,
-	       EGLContext context);
+gvTrack(EGLDisplay display,
+	EGLContext context);
 
 /*! ***************************************************************************
  * \brief 
@@ -43,8 +43,8 @@ gvTrackContext(EGLDisplay display,
  * \return 
  */
 int
-gvUntrackContext(EGLDisplay display,
-		 EGLContext context);
+gvUntrack(EGLDisplay display,
+	  EGLContext context);
 
 
 /*! ***************************************************************************

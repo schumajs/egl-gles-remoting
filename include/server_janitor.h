@@ -14,9 +14,10 @@
 
 #include "shared_memory.h"
 
-#include "../server.h"
+#include "./janitor.h"
 
 struct GVjanitor {
+    GVshmptr vmShm;
     GVshmptr janitorShm;
 };
 
@@ -25,11 +26,12 @@ typedef struct GVjanitor *GVjanitorptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newServer
+ * \param  [out] newJanitor
  * \param  [in]  vmShm
  * \return 
  */
-int gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm);
+int
+gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm);
 
 /*! ***************************************************************************
  * \brief 
@@ -37,6 +39,7 @@ int gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm);
  * \param  [in] server
  * \return 
  */
-int gvStopJanitor(GVjanitorptr server);
+int
+gvStopJanitor(GVjanitorptr server);
 
 #endif /* SERVER_JANITOR_H_ */

@@ -21,13 +21,16 @@
  * \param  [in] length
  * \return 
  */
-int gvBonjour(size_t offset, size_t length);
+int
+gvBonjour(size_t offset,
+	  size_t length);
 
 /*! ***************************************************************************
  * \brief 
  *
  * \return 
  */
-int gvAuRevoir(void);
+int
+gvAuRevoir(void);
 
 #endif /* JANITOR_H_ */
