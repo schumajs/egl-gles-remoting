@@ -12,9 +12,6 @@
 #ifndef SERIALZIER_H
 #define SERIALIZER_H
 
-#include <stdint.h>
-#include <stdlib.h>
-
 typedef int GVcmdid;
 typedef int GVcallid;
 
@@ -68,5 +65,51 @@ typedef int GVcallid;
 #define GV_CMDID_EGL_WAITNATIVE                    0x28
 #define GV_CMDID_EGL_SWAPBUFFERS                   0x29
 #define GV_CMDID_EGL_COPYBUFFERS                   0x2a
+
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \return
+ */
+GVcallid
+gvCall();
+
+/*! ***************************************************************************
+ * \brief
+ */
+int
+gvEndCall();
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param [in] callId
+ */
+int
+gvReturn(GVcallid callId);
+
+/*! ***************************************************************************
+ * \brief
+ */
+int
+gvEndReturn();
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param [in] data
+ * \param [in] length
+ */
+int
+gvGetData(void *data, size_t length);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param [in] data
+ * \param [in] length
+ */
+int
+gvPutData(const void *data, size_t length);
 
 #endif /* SERIALIZER_H */

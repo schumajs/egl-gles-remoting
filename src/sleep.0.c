@@ -14,7 +14,7 @@
 #include "sleep.h"
 
 int
-gvslpSleep(int sec, int nsec)
+gvSleep(int sec, int nsec)
 {
     struct timespec sleepTime;
     struct timespec returnTime;

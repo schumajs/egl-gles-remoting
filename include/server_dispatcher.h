@@ -14,8 +14,6 @@
 
 #include "transport.h"
 
-#include "../dispatcher.h" 
-
 typedef void (*GVdispatchfunc)(void);
 
 /*! ***************************************************************************

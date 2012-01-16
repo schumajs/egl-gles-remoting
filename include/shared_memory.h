@@ -16,12 +16,12 @@
 
 typedef int GVshmid;
 
-typedef struct GVshm {
+struct GVshm {
     GVshmid id;
     size_t  size;
-}
+};
  
-typedef GVshm *GVshmptr;
+typedef struct GVshm *GVshmptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -41,7 +41,7 @@ int gvCreateShm(GVshmptr *newShm, size_t shmSize);
  * \param  [in] length
  * \return 
  */
-int gvAttachShm(void *toAddr, GVshmptr shm, off_t offset, size_t length);
+int gvAttachShm(void *toAddr, GVshmptr shm, size_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -52,7 +52,7 @@ int gvAttachShm(void *toAddr, GVshmptr shm, off_t offset, size_t length);
  * \param  [in] length
  * \return 
  */
-int gvDetachShm(void *fromAddr, GVshmptr shm, off_t offset, size_t length);
+int gvDetachShm(void *fromAddr, GVshmptr shm, size_t offset, size_t length);
 
 /*! ***************************************************************************
  * \brief 
@@ -60,6 +60,6 @@ int gvDetachShm(void *fromAddr, GVshmptr shm, off_t offset, size_t length);
  * \param  [in] shm
  * \return
  */
-int gvDestroyShm(GVSHMshmptr shm);
+int gvDestroyShm(GVshmptr shm);
 
 #endif /* SHARED_MEMORY_H */

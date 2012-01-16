@@ -9,12 +9,12 @@
  * \details
  */
 
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <vrb.h>
 #include <sys/mman.h>
 
+#include "error.h"
 #include "shared_memory.h"
 #include "sleep.h"
 #include "transport.h"
@@ -25,17 +25,22 @@
 
 struct Buffer {
 
-    /* Transient part */
-    struct GVTRPbuffer    public;
-    void                 *tail;
+    /* App. address space */
+    struct GVbuffer  public;
 
-    /* Persistent part */
-    struct PersistentBufferPart {
-	VRB               head;
 
-	GVlock  clientLock;
-	GVlock  serverLock;
-    } *inShm;
+    struct InAppBufferPart {
+	void        *tail;
+    }  inAppPart;
+    
+
+    /* Shared memory */
+    struct InShmBufferPart {
+	VRB          head;
+
+	GVlock       clientLock;
+	GVlock       serverLock;
+    } *inShmPart;
 
 };
 
@@ -51,16 +56,16 @@ struct Buffer {
 
 struct Transport {
 
-    /* Transient part */
-    struct GVTRPtransport public;
+    /* App. address space */
+    struct GVtransport         public;
 
-    /* Persistent part */
-    struct PersistentTransportPart {
-	int state;
+    /* Shared memory */
+    struct InShmTransportPart {
+	int                    state;
 
-	struct PersistentBufferPart callBuffer;
-	struct PersistentBufferPart returnBuffer;
-    } *inShm;
+	struct InShmBufferPart callBuffer;
+	struct InShmBufferPart returnBuffer;
+    } *inShmPart;
 
 };
 
@@ -112,8 +117,8 @@ struct Transport {
  * 2. logical mmaped file:
  * -----------------------
  *
- * The buffer tails are mainShmed twice to a consecutive logical memory region, so
- * the logical length is: transport head size + 2 * transport tail size
+ * The buffer tails are mainShmed twice to a consecutive logical memory region,
+ * so the logical length is: transport head size + 2 * transport tail size
  *
  *    __________ 2 * transport tail size _____________
  *   /                                                \
@@ -160,35 +165,37 @@ static int systemPageSize = 4096;
 /* ****************************************************************************
  */
 
-#define initLocks(callBuffer, returnBuffer)				       \
-    do {								       \
-        GVlockptr tempLock;						       \
-									       \
-	if (gvCreateLock(&tempLock) == -1)				       \
-	{								       \
-	    perror("gvCreateLock");					       \
-	    return -1;							       \
-	}								       \
-									       \
-	memcpy(&callBuffer->inShm->clientLock, tempLock, sizeof(GVlock));   \
-	memcpy(&callBuffer->inShm->serverLock, tempLock, sizeof(GVlock));   \
-									       \
-	memcpy(&returnBuffer->inShm->clientLock, tempLock, sizeof(GVlock)); \
-	memcpy(&returnBuffer->inShm->serverLock, tempLock, sizeof(GVlock)); \
-									       \
-        if (gvlckDestroy(tempLock) == -1)				       \
-        {								       \
-	    perror("gvlckDestroy");					       \
-	    return -1;							       \
-        }								       \
+#define initLocks(callBuffer, returnBuffer)		\
+    do {						\
+        GVlockptr tempLock;				\
+							\
+	if (gvCreateLock(&tempLock) == -1)		\
+	{						\
+	    THROW(e0, "gvCreateLock");			\
+	}						\
+							\
+	memcpy(&callBuffer->inShmPart->clientLock,	\
+	       tempLock, sizeof(GVlock));		\
+	memcpy(&callBuffer->inShmPart->serverLock,	\
+	       tempLock, sizeof(GVlock));		\
+							\
+	memcpy(&returnBuffer->inShmPart->clientLock,	\
+	       tempLock, sizeof(GVlock));		\
+	memcpy(&returnBuffer->inShmPart->serverLock,	\
+	       tempLock, sizeof(GVlock));		\
+							\
+	if (gvDestroyLock(tempLock) == -1)		\
+	{						\
+	    THROW(e0, "gvDestroyLock");			\
+	}						\
     } while(0)
 
 /** ***************************************************************************
  */
 
 int
-gvtrpCreate(GVTRPtransportptr *newTransport, 
-	    GVSHMshmptr shm, size_t offset, size_t length)
+gvCreateTransport(GVtransportptr *newTransport, 
+		  GVshmptr shm, size_t offset, size_t length)
 {
    
     void             *base;
@@ -196,266 +203,335 @@ gvtrpCreate(GVTRPtransportptr *newTransport,
     struct Buffer    *callBuffer;
     struct Buffer    *returnBuffer;
 
-    /*
-     * Constraint:
-     *
-     *   transport tail size / 2 = n * system page size, n is positive
-     *
-     */
-    if (!(length > 0 && BUFFER_TAIL_SIZE(length) % systemPageSize == 0))
+    TRY ()
     {
-	errno = EINVAL;
+	/*
+	 * Constraint:
+	 *
+	 *   transport tail size / 2 = n * system page size, n is positive
+	 *
+	 */
+	if (!(length > 0 && BUFFER_TAIL_SIZE(length) % systemPageSize == 0))
+	{
+	    THROW(e0, "invalid length");
+	}
+
+	if ((base = mmap(NULL, length + TRANSPORT_TAIL_SIZE(length), PROT_NONE,
+			 MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == MAP_FAILED)
+	{
+	    THROW(e0, "mmap");
+	}
+
+	if (gvAttachShm(base   + MMAP_TRANSPORT_HEAD_OFFSET,
+			shm,
+			offset + FILE_TRANSPORT_HEAD_OFFSET,
+			TRANSPORT_HEAD_SIZE) == -1)
+	{
+	    THROW(e0, "gvAttachShm");
+	}
+
+	if (gvAttachShm(base   + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET,
+			shm,
+			offset + FILE_CALL_BUFFER_TAIL_OFFSET,
+			BUFFER_TAIL_SIZE(length)) == -1)
+	{
+	    THROW(e0, "gvAttachShm");
+	}
+
+	if (gvAttachShm(base   + MMAP_CALL_BUFFER_TAIL_2ND_OFFSET(length),
+			shm,
+			offset + FILE_CALL_BUFFER_TAIL_OFFSET,
+			BUFFER_TAIL_SIZE(length)) == -1)
+	{
+	    THROW(e0, "gvAttachShm");
+	}
+
+	if (gvAttachShm(base   + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length),
+			shm,
+			offset + FILE_RETURN_BUFFER_TAIL_OFFSET(length),
+			BUFFER_TAIL_SIZE(length)) == -1)
+	{
+	    THROW(e0, "gvAttachShm");
+	}
+
+	if (gvAttachShm(base   + MMAP_RETURN_BUFFER_TAIL_2ND_OFFSET(length),
+			shm,
+			offset + FILE_RETURN_BUFFER_TAIL_OFFSET(length),
+			BUFFER_TAIL_SIZE(length)) == -1)
+	{
+	    THROW(e0, "gvAttachShm");
+	}
+
+	if ((transport = malloc(sizeof(struct Transport))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	if ((callBuffer = malloc(sizeof(struct Buffer))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	if ((returnBuffer = malloc(sizeof(struct Buffer))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	transport->inShmPart = base;
+
+	callBuffer->inShmPart = &transport->inShmPart->callBuffer;
+	callBuffer->inAppPart.tail = base + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET;
+
+	returnBuffer->inShmPart = &transport->inShmPart->callBuffer;
+	returnBuffer->inAppPart.tail = base + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length);
+
+	if (transport->inShmPart->state == STATE_UNINITIALIZED)
+	{
+	    vrb_p callBufferHead   = &callBuffer->inShmPart->head;
+	    vrb_p returnBufferHead = &returnBuffer->inShmPart->head;
+
+	    transport->inShmPart->state = STATE_INITIALIZED;
+
+	    callBufferHead->lower_ptr = 0;
+	    callBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
+	    callBufferHead->first_ptr = 0;
+	    callBufferHead->last_ptr  = 0;
+	    callBufferHead->mem_ptr   = 0;
+	    callBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
+	    vrb_set_mmap(callBufferHead);
+
+	    returnBufferHead->lower_ptr = 0;
+	    returnBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
+	    returnBufferHead->first_ptr = 0;
+	    returnBufferHead->last_ptr  = 0;
+	    returnBufferHead->mem_ptr   = 0;
+	    returnBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
+	    vrb_set_mmap(returnBufferHead);
+
+	    initLocks(callBuffer, returnBuffer);
+	}
+	
+	*newTransport = (GVtransportptr) transport;
+
+	(*newTransport)->shm    = shm;
+	(*newTransport)->offset = offset;
+	(*newTransport)->length = length;
+
+	(*newTransport)->callBuffer   = (GVbufferptr) callBuffer;
+	(*newTransport)->returnBuffer = (GVbufferptr) returnBuffer;
+
+	(*newTransport)->callBuffer->clientLock  = &callBuffer->inShmPart->clientLock;
+	(*newTransport)->callBuffer->serverLock  = &callBuffer->inShmPart->serverLock;
+
+	(*newTransport)->returnBuffer->clientLock = &returnBuffer->inShmPart->clientLock;
+	(*newTransport)->returnBuffer->serverLock = &returnBuffer->inShmPart->serverLock;
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
-
-    if ((base = mmap(NULL, length + TRANSPORT_TAIL_SIZE(length), PROT_NONE,
-		     MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == MAP_FAILED)
-    {
-	perror("mmap");
-	return -1;
-    }
-
-    if (gvshmAttach(base   + MMAP_TRANSPORT_HEAD_OFFSET,
-		    shm,
-		    offset + FILE_TRANSPORT_HEAD_OFFSET,
-		    TRANSPORT_HEAD_SIZE) == -1)
-    {
-	perror("gvshmAttach");
-	return -1;
-    }
-
-    if (gvshmAttach(base   + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET,
-		    shm,
-		    offset + FILE_CALL_BUFFER_TAIL_OFFSET,
-		    BUFFER_TAIL_SIZE(length)) == -1)
-    {
-	perror("gvshmAttach");
-	return -1;
-    }
-
-    if (gvshmAttach(base   + MMAP_CALL_BUFFER_TAIL_2ND_OFFSET(length),
-		    shm,
-		    offset + FILE_CALL_BUFFER_TAIL_OFFSET,
-		    BUFFER_TAIL_SIZE(length)) == -1)
-    {
-	perror("gvshmAttach");
-	return -1;
-    }
-
-    if (gvshmAttach(base   + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length),
-		    shm,
-		    offset + FILE_RETURN_BUFFER_TAIL_OFFSET(length),
-		    BUFFER_TAIL_SIZE(length)) == -1)
-    {
-	perror("gvshmAttach");
-	return -1;
-    }
-
-    if (gvshmAttach(base   + MMAP_RETURN_BUFFER_TAIL_2ND_OFFSET(length),
-		    shm,
-		    offset + FILE_RETURN_BUFFER_TAIL_OFFSET(length),
-		    BUFFER_TAIL_SIZE(length)) == -1)
-    {
-	perror("gvshmAttach");
-	return -1;
-    }
-
-    transport = malloc(sizeof(struct Transport));
-    transport->inShm = base;
-
-    callBuffer = malloc(sizeof(struct Buffer));
-    callBuffer->inShm = &transport->inShm->callBuffer;
-
-    callBuffer->tail = base + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET;
-
-    returnBuffer = malloc(sizeof(struct Buffer));
-    returnBuffer->inShm = &transport->inShm->callBuffer;
-
-    returnBuffer->tail = base + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length);
-
-    if (transport->inShm->state == STATE_UNINITIALIZED)
-    {
-	vrb_p callBufferHead   = &callBuffer->inShm->head;
-	vrb_p returnBufferHead = &returnBuffer->inShm->head;
-
-	transport->inShm->state = STATE_INITIALIZED;
-
-	callBufferHead->lower_ptr = 0;
-	callBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
-	callBufferHead->first_ptr = 0;
-	callBufferHead->last_ptr  = 0;
-	callBufferHead->mem_ptr   = 0;
-	callBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
-	vrb_set_mmap(callBufferHead);
-
-	returnBufferHead->lower_ptr = 0;
-	returnBufferHead->upper_ptr = (void *)BUFFER_TAIL_SIZE(length);
-	returnBufferHead->first_ptr = 0;
-	returnBufferHead->last_ptr  = 0;
-	returnBufferHead->mem_ptr   = 0;
-	returnBufferHead->buf_size  = BUFFER_TAIL_SIZE(length);
-	vrb_set_mmap(returnBufferHead);
-
-	initLocks(callBuffer, returnBuffer);
-    }
-
-    *newTransport = (GVTRPtransportptr) transport;
-
-    (*newTransport)->shm    = shm;
-    (*newTransport)->offset = offset;
-    (*newTransport)->length = length;
-
-    (*newTransport)->callBuffer   = (GVTRPbufferptr) callBuffer;
-    (*newTransport)->returnBuffer = (GVTRPbufferptr) returnBuffer;
-
-    (*newTransport)->callBuffer->clientLock  = &callBuffer->inShm->clientLock;
-    (*newTransport)->callBuffer->serverLock  = &callBuffer->inShm->serverLock;
-
-    (*newTransport)->returnBuffer->clientLock = &returnBuffer->inShm->clientLock;
-    (*newTransport)->returnBuffer->serverLock = &returnBuffer->inShm->serverLock;
 
     return 0;
 }
 
 int
-gvtrpDataPtr(GVTRPbufferptr buffer, void **dataPtr)
+gvDataPtr(GVbufferptr buffer, void **dataPtr)
 {
     size_t offset;
 
-    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShm->head);
-    *dataPtr = castBuffer(buffer)->tail + offset;
+    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShmPart->head);
+    *dataPtr = castBuffer(buffer)->inAppPart.tail + offset;
 
     return 0;
 }
 
 int
-gvtrpDataLength(GVTRPbufferptr buffer, size_t *length)
+gvDataLength(GVbufferptr buffer, size_t *length)
 {
-    *length = vrb_data_len(&castBuffer(buffer)->inShm->head);
+    *length = vrb_data_len(&castBuffer(buffer)->inShmPart->head);
     return 0;
 }
 
 int
-gvtrpTake(GVTRPbufferptr buffer, size_t length)
+gvTake(GVbufferptr buffer, size_t length)
 {
-    vrb_take(&castBuffer(buffer)->inShm->head, length);
+    TRY ()
+    {
+	if (vrb_take(&castBuffer(buffer)->inShmPart->head, length) == -1)
+	{
+	    THROW(e0, "vrb_take");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
     return 0;
 }
 
 int
-gvtrpRead(GVTRPbufferptr buffer, void *addr, size_t restLength)
+gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 {
-    vrb_p   head = &castBuffer(buffer)->inShm->head;
-    void   *tail = castBuffer(buffer)->tail;
+    vrb_p   head = &castBuffer(buffer)->inShmPart->head;
+    void   *tail = castBuffer(buffer)->inAppPart.tail;
 
     size_t  offset;
     size_t  dataLength;
 
-    while (1) 
+    TRY () 
     {
-	/* TODO synchronization? */
-	offset     = (size_t) vrb_data_ptr(head);
-	dataLength = vrb_data_len(head);
-
-	if (dataLength >= restLength)
+	while (1) 
 	{
-	    memcpy(addr, tail + offset, restLength);
-	    vrb_take(head, restLength);
+	    /* TODO synchronization? */
+	    offset     = (size_t) vrb_data_ptr(head);
+	    dataLength = vrb_data_len(head);
 
-	    break;
+	    if (dataLength >= restLength)
+	    {
+		memcpy(addr, tail + offset, restLength);
+
+		if (vrb_take(head, restLength) == -1)
+		{
+		    THROW(e0, "vrb_take");
+		}
+
+		break;
+	    }
+	    else if (dataLength > 0)
+	    {
+		memcpy(addr, tail + offset, dataLength);
+		
+		if (vrb_take(head, dataLength) == -1)
+		{
+		    THROW(e0, "vrb_take");
+		}
+
+		addr       = addr + dataLength;
+		restLength = restLength - dataLength;
+	    }
+
+	    gvSleep(0, 1000);
 	}
-	else if (dataLength > 0)
-	{
-	    memcpy(addr, tail + offset, dataLength);
-	    vrb_take(head, dataLength);
 
-	    addr       = addr + dataLength;
-	    restLength = restLength - dataLength;
-	}
-
-	gvslpSleep(0, 1000);
+    }
+    CATCH (e0)
+    {
+	return -1;
     }
 
     return 0;
 }
 
 int
-gvtrpSpacePtr(GVTRPbufferptr buffer, void **spacePtr)
+gvSpacePtr(GVbufferptr buffer, void **spacePtr)
 {
     size_t offset;
 
-    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShm->head);
-    *spacePtr = castBuffer(buffer)->tail + offset;
+    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShmPart->head);
+    *spacePtr = castBuffer(buffer)->inAppPart.tail + offset;
 
     return 0;
 }
 
 int
-gvtrpSpaceLength(GVTRPbufferptr buffer, size_t *length)
+gvSpaceLength(GVbufferptr buffer, size_t *length)
 {
-    *length = vrb_space_len(&castBuffer(buffer)->inShm->head);
+    *length = vrb_space_len(&castBuffer(buffer)->inShmPart->head);
     return 0;
 }
 
 int
-gvtrpGive(GVTRPbufferptr buffer, size_t length)
+gvGive(GVbufferptr buffer, size_t length)
 {
-    vrb_give(&castBuffer(buffer)->inShm->head, length);
+    TRY ()
+    {
+	if (vrb_give(&castBuffer(buffer)->inShmPart->head, length) == -1)
+	{
+	    THROW(e0, "vrb_give");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
     return 0;
 }
 
 int
-gvtrpWrite(GVTRPbufferptr buffer, const void *addr, size_t restLength)
+gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 {
-    vrb_p   head = &castBuffer(buffer)->inShm->head;
-    void   *tail = castBuffer(buffer)->tail;
+    vrb_p   head = &castBuffer(buffer)->inShmPart->head;
+    void   *tail = castBuffer(buffer)->inAppPart.tail;
 
     size_t  offset;
     size_t  spaceLength;
 
-    while (1) 
+    TRY ()
     {
-	/* TODO synchronization? */
-	offset     = (size_t) vrb_space_ptr(head);
-	spaceLength = vrb_space_len(head);
-
-	if (spaceLength >= restLength)
+	while (1) 
 	{
-	    memcpy(tail + offset, addr, restLength);
-	    vrb_give(head, restLength);
+	    /* TODO synchronization? */
+	    offset     = (size_t) vrb_space_ptr(head);
+	    spaceLength = vrb_space_len(head);
 
-	    break;
+	    if (spaceLength >= restLength)
+	    {
+		memcpy(tail + offset, addr, restLength);
+	
+		if (vrb_give(head, restLength) == -1)
+		{
+		    THROW(e0, "vrb_give");
+		}
+
+		break;
+	    }
+	    else if (spaceLength > 0)
+	    {
+		memcpy(tail + offset, addr, spaceLength);
+
+		if (vrb_give(head, spaceLength) == -1)
+		{
+		    THROW(e0, "vrb_give");
+		}
+
+		addr       = addr + spaceLength;
+		restLength = restLength - spaceLength;
+	    }
+
+	    gvSleep(0, 1000);
 	}
-	else if (spaceLength > 0)
-	{
-	    memcpy(tail + offset, addr, spaceLength);
-	    vrb_give(head, spaceLength);
-
-	    addr       = addr + spaceLength;
-	    restLength = restLength - spaceLength;
-	}
-
-	gvslpSleep(0, 1000);
+    }
+    CATCH (e0)
+    {
+	return -1;
     }
 
     return 0;
 }
 
 int
-gvtrpDestroy(GVTRPtransportptr transport)
+gvDestroyTransport(GVtransportptr transport)
 {
     size_t length = transport->length;
 
-    if (munmap(castTransport(transport)->inShm,
-	       length + TRANSPORT_TAIL_SIZE(length)))
+    TRY ()
     {
-	perror("munmap");
+	if (munmap(castTransport(transport)->inShmPart,
+		   length + TRANSPORT_TAIL_SIZE(length)))
+	{
+	    THROW(e0, "munmap");
+	}
+
+	free(transport->callBuffer);
+	free(transport->returnBuffer);
+	free(transport);
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
-
-   free(transport->callBuffer);
-   free(transport->returnBuffer);
-   free(transport);
 
    return 0;
 }

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "error.h"
 #include "lock.h"
 
 int
@@ -21,22 +22,32 @@ gvCreateLock(GVlockptr *newLock)
     pthread_mutex_t     mutex;
     pthread_mutexattr_t mutexAttr;
 
-    pthread_mutexattr_init(&mutexAttr);
-    pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
-    if (pthread_mutexattr_init(&mutexAttr) != 0)
+    TRY ()
     {
-	perror("pthread_mutexattr_init");
+	pthread_mutexattr_init(&mutexAttr);
+	pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
+
+	if (pthread_mutexattr_init(&mutexAttr) != 0)
+	{
+	    THROW(e0, "pthread_mutexattr_init");
+	}
+
+	if (pthread_mutex_init(&mutex, &mutexAttr) != 0)
+	{
+	    THROW(e0, "pthread_mutex_init");
+	}
+
+	if ((*newLock = malloc(sizeof(pthread_mutex_t))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	*(*newLock) = mutex;
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
-
-    if (pthread_mutex_init(&mutex, &mutexAttr) != 0)
-    {
-	perror("pthread_mutex_init");
-	return -1;
-    }
-
-    *newLock = malloc(sizeof(pthread_mutex_t));
-    *(*newLock) = mutex;
 
     return 0;
 }
@@ -44,9 +55,15 @@ gvCreateLock(GVlockptr *newLock)
 int
 gvlckAcquire(GVlockptr lock)
 {
-    if (pthread_mutex_lock(lock) != 0)
+    TRY ()
     {
-	perror("pthread_mutex_lock");
+	if (pthread_mutex_lock(lock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_lock");
+	}
+    }
+    CATCH(e0)
+    {
 	return -1;
     }
 
@@ -56,21 +73,33 @@ gvlckAcquire(GVlockptr lock)
 int
 gvTryToAcquireLock(GVlockptr lock)
 {
-    if (pthread_mutex_trylock(lock) != 0)
+    TRY ()
     {
-	perror("pthread_mutex_trylock");
+	if (pthread_mutex_trylock(lock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_trylock");
+	}
+    }
+    CATCH(e0)
+    {
 	return -1;
     }
 
-    return 0; 
+    return 0;
 }
 
 int
 gvReleaseLock(GVlockptr lock)
 {
-    if (pthread_mutex_unlock(lock) != 0)
+    TRY ()
     {
-	perror("pthread_mutex_unlock");
+	if (pthread_mutex_unlock(lock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_unlock");
+	}
+    }
+    CATCH(e0)
+    {
 	return -1;
     }
 
@@ -80,13 +109,17 @@ gvReleaseLock(GVlockptr lock)
 int
 gvlckDestroy(GVlockptr lock)
 {
-    if (pthread_mutex_destroy(lock) != 0)
+    TRY ()
     {
-	perror("pthread_mutex_destroy");
+	if (pthread_mutex_destroy(lock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_destroy");
+	}
+    }
+    CATCH(e0)
+    {
 	return -1;
     }
-
-    free(lock);
 
     return 0;
 }

@@ -13,45 +13,42 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
+#include "error.h"
 #include "shared_memory.h"
 
 int
-gvshmCreate(GVSHMshmptr *newShm, size_t shmSize)
+gvCreateShm(GVshmptr *newShm, size_t shmSize)
 {
     int  fd;
-    char fileName[] = "/tmp/gvshm.XXXXXX";
+    char fileName[] = "/dev/shm/gvshm.XXXXXX";
 	
-    if ((fd = mkstemp(fileName)) == -1)
+    TRY ()
     {
-	perror("mkstemp");
-	return -1;
+	if ((fd = mkstemp(fileName)) == -1)
+	{
+	    THROW(e0, "mkstemp");
+	}
+
+	if (unlink(fileName) == -1)
+	{
+	    THROW(e0, "unlink");
+	}
+
+	if (ftruncate(fd, shmSize) == -1)
+	{
+	    THROW(e0, "ftruncate");
+	}
+
+	if ((*newShm = malloc(sizeof(struct GVshm))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	(*newShm)->id   = fd;
+	(*newShm)->size = shmSize;
     }
-
-    if (unlink(fileName) == -1)
+    CATCH (e0)
     {
-	perror("unlink");
-	return -1;
-    }
-
-    if (ftruncate(fd, shmSize) == -1)
-    {
-	perror("ftruncate");
-	return -1;
-    }
-
-    *newShm = malloc(sizeof(GVSHMshm));
-    *(*newShm) = fd;
-
-    return 0;
-}
-
-int
-gvshmAttach(void *toAddr, GVSHMshmptr shm, off_t offset, size_t length)
-{
-    if (mmap(toAddr, length, PROT_READ | PROT_WRITE,
-	     MAP_FIXED | MAP_SHARED, *shm, offset) == MAP_FAILED)
-    {
-	perror("mmap");
 	return -1;
     }
 
@@ -59,11 +56,18 @@ gvshmAttach(void *toAddr, GVSHMshmptr shm, off_t offset, size_t length)
 }
 
 int
-gvshmDetach(void *fromAddr, GVSHMshmptr shm, off_t offset, size_t length)
+gvAttachShm(void *toAddr, GVshmptr shm, size_t offset, size_t length)
 {
-    if (munmap(fromAddr, length))
+    TRY ()
     {
-	perror("munmap");
+	if (mmap(toAddr, length, PROT_READ | PROT_WRITE,
+		 MAP_FIXED | MAP_SHARED, shm->id, offset) == MAP_FAILED)
+	{
+	    THROW(e0, "mmap");
+	}
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
 
@@ -71,15 +75,39 @@ gvshmDetach(void *fromAddr, GVSHMshmptr shm, off_t offset, size_t length)
 }
 
 int
-gvshmDestroy(GVSHMshmptr shm)
+gvDetachShm(void *fromAddr, GVshmptr shm, size_t offset, size_t length)
 {
-    if (close(*shm) == -1)
+    TRY ()
     {
-	perror("close");
+	if (munmap(fromAddr, length) == -1)
+	{
+	    THROW(e0, "munmap");
+	}
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
 
-    free(shm);
+    return 0;
+}
+
+int
+gvDestroyShm(GVshmptr shm)
+{
+    TRY ()
+    {
+	if (close(shm->id) == -1)
+	{
+	    THROW(e0, "close");
+	}
+
+	free(shm);
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
 
     return 0;
 }

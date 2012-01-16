@@ -14,9 +14,9 @@
 
 #include <unistd.h>
 
-#include "heap_manager.h"
+#include "shared_memory.h"
 
-#include "../shared_memory.h"
+#include "../heap_manager.h"
 
 struct GVheapmgr {
     GVshmptr vmShm;
