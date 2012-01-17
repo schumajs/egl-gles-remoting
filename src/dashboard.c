@@ -55,7 +55,7 @@ demoClient()
 
 int main()
 {
-    TRY ()
+    TRY
     {
 	if (gvStartHeapMgr(&heapMgr, 1UL << 20) == -1)
 	{
@@ -67,11 +67,11 @@ int main()
 	    THROW(e0, "gvStartJanitor");
 	}
 
-	gvSleep(5, 0);
+	gvSleep(2, 0);
 
 	demoClient();
 
-	gvSleep(5, 0);
+	gvSleep(10, 0);
 
 	if (gvStopJanitor(janitor) == -1)
 	{

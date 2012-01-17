@@ -26,7 +26,7 @@ gvCall(GVtransportptr  transport,
        GVcmdid        *cmdId,
        GVcallid       *callId)
 {
-    TRY ()
+    TRY
     {
 	if (lock != NULL)
 	{
@@ -80,7 +80,7 @@ int
 gvEndCall(GVtransportptr transport,
 	  GVlockptr      lock)
 {
-    TRY ()
+    TRY
     {
 	if (lock != NULL)
 	{
@@ -106,7 +106,7 @@ gvReturn(GVtransportptr  transport,
     void           *dataPtr;
     size_t          dataLength;
 
-    TRY ()
+    TRY
     {
 	while (1)
 	{
@@ -176,7 +176,7 @@ int
 gvEndReturn(GVtransportptr transport,
 	    GVlockptr      lock)
 {
-    TRY ()
+    TRY
     {
 	if (lock != NULL)
 	{
@@ -199,7 +199,7 @@ gvGetData(GVtransportptr  transport,
 	  void           *data,
 	  size_t          length)
 {
-    TRY ()
+    TRY
     {
 	if (gvRead(transport->returnBuffer, data, length) == -1)
 	{
@@ -219,7 +219,7 @@ gvPutData(GVtransportptr  transport,
           const void     *data,
 	  size_t          length)
 {
-    TRY ()
+    TRY
     {
 	if (gvWrite(transport->callBuffer, data, length) == -1)
 	{

@@ -22,7 +22,7 @@ gvCreateLock(GVlockptr *newLock)
     pthread_mutex_t     mutex;
     pthread_mutexattr_t mutexAttr;
 
-    TRY ()
+    TRY
     {
 	pthread_mutexattr_init(&mutexAttr);
 	pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
@@ -55,7 +55,7 @@ gvCreateLock(GVlockptr *newLock)
 int
 gvAcquire(GVlockptr lock)
 {
-    TRY ()
+    TRY
     {
 	if (pthread_mutex_lock(lock) != 0)
 	{
@@ -73,7 +73,7 @@ gvAcquire(GVlockptr lock)
 int
 gvTryToAcquire(GVlockptr lock)
 {
-    TRY ()
+    TRY
     {
 	if (pthread_mutex_trylock(lock) != 0)
 	{
@@ -91,7 +91,7 @@ gvTryToAcquire(GVlockptr lock)
 int
 gvRelease(GVlockptr lock)
 {
-    TRY ()
+    TRY
     {
 	if (pthread_mutex_unlock(lock) != 0)
 	{
@@ -109,7 +109,7 @@ gvRelease(GVlockptr lock)
 int
 gvDestroyLock(GVlockptr lock)
 {
-    TRY ()
+    TRY
     {
 	if (pthread_mutex_destroy(lock) != 0)
 	{

@@ -15,6 +15,6 @@
  * Syntactic suggar for error handling
  */
 
-#define TRY(lbl)
+#define TRY
 #define THROW(to, msg) perror(msg); goto to
 #define CATCH(to) while (0) to:

@@ -27,7 +27,7 @@ VER_REV  := 1
 SH_TAR := sharedlib
 SH_BIN := gvshared
 
-SH_C0_OBJS  := lock.0.o shared_memory.0.o sleep.0.o transport.0.o
+SH_C0_OBJS  := lock.0.o process_state_map.0.o shared_memory.0.o sleep.0.o thread_state_map.0.o transport.0.o
 SH_C1_OBJS  :=
 
 ###############################################################################
@@ -36,7 +36,7 @@ SH_C1_OBJS  :=
 CL_TAR := clientlib
 CL_BIN := gvclient
 
-CL_C0_OBJS  := client_dispatcher.0.o client_janitor.0.o client_serializer.0.o
+CL_C0_OBJS  := client_janitor.0.o client_serializer.0.o
 CL_C1_OBJS  :=
 
 ###############################################################################
@@ -45,7 +45,7 @@ CL_C1_OBJS  :=
 SL_TAR := serverlib
 SL_BIN := gvserver
 
-SL_C0_OBJS  :=  server_dispatcher.0.o server_heap_manager.0.o server_janitor.0.o server_serializer.0.o
+SL_C0_OBJS  :=  server_dispatcher.0.o server_heap_manager.0.o server_janitor.0.o server_serializer.0.o server_state_tracker.0.o
 SL_C1_OBJS  :=
 
 ###############################################################################

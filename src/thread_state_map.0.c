@@ -1,0 +1,218 @@
+/*! ***************************************************************************
+ * \file    thread_state_map.0.c
+ * \brief
+ * 
+ * \date    January 9, 2011
+ * \author  Jens Schumann
+ *          schumajs@googlemail.com
+ *
+ * \details
+ */
+
+#define _MULTI_THREADED
+#include <pthread.h>
+#include <uthash.h>
+
+#include "error.h"
+#include "thread_state_map.h"
+
+/* ***************************************************************************
+ * Thread state map implementation
+ */
+
+struct Item {
+    void           *valPtr;
+    UT_hash_handle  hh;
+};
+
+#define getThreadSpecificData() \
+    pthread_getspecific(threadSpecificKey)
+
+#define setThreadSpecificData(data) \
+    pthread_setspecific(threadSpecificKey, data)
+
+pthread_mutex_t      initTerminateLock = PTHREAD_MUTEX_INITIALIZER;
+static int           threadCounter     =  0;
+static pthread_key_t threadSpecificKey = -1;
+
+static void
+threadSpecificDataDestructor(void *threadSpecificData) {
+    pthread_setspecific(threadSpecificKey, NULL);
+}
+
+int
+gvInitThreadStateMap()
+{
+    TRY
+    {
+	if (pthread_mutex_lock(&initTerminateLock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_lock");
+	}
+
+	if (threadSpecificKey == -1)
+	{
+	    if (pthread_key_create(&threadSpecificKey,
+				   threadSpecificDataDestructor) != 0)
+	    {
+		THROW(e1, "pthread_key_create");
+	    }
+	}
+    
+	threadCounter++;
+
+	if (pthread_mutex_unlock(&initTerminateLock) != 0)
+	{
+	    THROW(e1, "pthread_mutex_unlock");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+    CATCH (e1)
+    {
+	/* Try to unlock. At this point we can't do anything if unlocking
+         * fails, so just ignore errors.
+         */
+	pthread_mutex_unlock(&initTerminateLock);
+	return -1;
+    }
+   
+    return 0;
+}
+
+int
+gvDelThreadState(void    *keyPtr,
+		 size_t   keyLength)
+{
+    struct Item *item;
+    struct Item *hashtable;
+
+    TRY
+    {
+	if ((hashtable = (struct Item *)getThreadSpecificData()) == NULL)
+	{
+	    THROW(e0, "no thread state");
+	}
+
+	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+	HASH_DELETE(hh, hashtable, item);
+	free(item);
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvGetThreadState(void    *keyPtr,
+		 size_t   keyLength,
+		 void   **valPtr)
+{
+    struct Item *item;
+    struct Item *hashtable;
+
+    TRY
+    {
+	if ((hashtable = (struct Item *)getThreadSpecificData()) == NULL)
+	{
+	    THROW(e0, "no thread state");
+	}
+
+	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+
+	*valPtr = item->valPtr;   
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvPutThreadState(void   *keyPtr,
+		 size_t  keyLength,
+		 void   *valPtr)
+{
+    struct Item *item;
+    struct Item *hashtable;
+
+    TRY
+    {
+	if ((item = malloc(sizeof(struct Item))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	item->valPtr = valPtr;
+
+	if ((hashtable = (struct Item *)getThreadSpecificData()) != NULL)
+	{	 
+	    HASH_ADD_KEYPTR(hh, hashtable, keyPtr, keyLength, item);
+	}
+	else
+	{
+	    HASH_ADD_KEYPTR(hh, hashtable, keyPtr, keyLength, item);
+
+	    if (setThreadSpecificData(hashtable) != 0)
+	    {
+		THROW(e0, "pthread_setspecific");
+	    }
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvTermThreadStateMap()
+{
+    TRY
+    {
+	if (pthread_mutex_lock(&initTerminateLock) != 0)
+	{
+	    THROW(e0, "pthread_mutex_lock");
+	}
+
+	if (threadCounter == 1)
+	{
+	    if (pthread_key_delete(threadSpecificKey) != 0)
+	    {
+		THROW(e1, "pthread_key_delete");
+	    }
+	
+	    threadSpecificKey = -1;
+	}
+
+	threadCounter--;
+
+	if (pthread_mutex_unlock(&initTerminateLock) != 0)
+	{
+	    THROW(e1, "pthread_mutex_unlock");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+    CATCH (e1)
+    {
+	/* Try to unlock. At this point we can't do anything if unlocking
+         * fails, so just ignore errors.
+         */
+	pthread_mutex_unlock(&initTerminateLock);
+	return -1;
+    } 
+
+    return 0;
+}

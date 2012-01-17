@@ -22,7 +22,7 @@ gvCreateShm(GVshmptr *newShm, size_t shmSize)
     int  fd;
     char fileName[] = "/dev/shm/gvshm.XXXXXX";
 	
-    TRY ()
+    TRY
     {
 	if ((fd = mkstemp(fileName)) == -1)
 	{
@@ -58,7 +58,7 @@ gvCreateShm(GVshmptr *newShm, size_t shmSize)
 int
 gvAttachShm(void *toAddr, GVshmptr shm, size_t offset, size_t length)
 {
-    TRY ()
+    TRY
     {
 	if (mmap(toAddr, length, PROT_READ | PROT_WRITE,
 		 MAP_FIXED | MAP_SHARED, shm->id, offset) == MAP_FAILED)
@@ -77,7 +77,7 @@ gvAttachShm(void *toAddr, GVshmptr shm, size_t offset, size_t length)
 int
 gvDetachShm(void *fromAddr, GVshmptr shm, size_t offset, size_t length)
 {
-    TRY ()
+    TRY
     {
 	if (munmap(fromAddr, length) == -1)
 	{
@@ -95,7 +95,7 @@ gvDetachShm(void *fromAddr, GVshmptr shm, size_t offset, size_t length)
 int
 gvDestroyShm(GVshmptr shm)
 {
-    TRY ()
+    TRY
     {
 	if (close(shm->id) == -1)
 	{

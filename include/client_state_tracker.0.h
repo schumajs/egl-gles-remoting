@@ -121,6 +121,6 @@ gvSetCurrent(EGLDisplay     display,
  * \return 
  */
 int
-gvTerminateStateTracker();
+gvTermStateTracker();
 
 #endif /* CLIENT_STATE_TRACKER_H_*/

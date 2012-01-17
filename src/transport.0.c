@@ -204,7 +204,7 @@ gvCreateTransport(GVtransportptr *newTransport,
     struct Buffer    *callBuffer;
     struct Buffer    *returnBuffer;
 
-    TRY ()
+    TRY
     {
 	/*
 	 * Constraint:
@@ -357,7 +357,7 @@ gvDataLength(GVbufferptr buffer, size_t *length)
 int
 gvTake(GVbufferptr buffer, size_t length)
 {
-    TRY ()
+    TRY
     {
 	if (vrb_take(&castBuffer(buffer)->inShmPart->head, length) == -1)
 	{
@@ -381,7 +381,7 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
     size_t  offset;
     size_t  dataLength;
 
-    TRY () 
+    TRY 
     {
 	while (1) 
 	{
@@ -446,7 +446,7 @@ gvSpaceLength(GVbufferptr buffer, size_t *length)
 int
 gvGive(GVbufferptr buffer, size_t length)
 {
-    TRY ()
+    TRY
     {
 	if (vrb_give(&castBuffer(buffer)->inShmPart->head, length) == -1)
 	{
@@ -470,7 +470,7 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
     size_t  offset;
     size_t  spaceLength;
 
-    TRY ()
+    TRY
     {
 	while (1) 
 	{
@@ -518,7 +518,7 @@ gvDestroyTransport(GVtransportptr transport)
 {
     size_t length = transport->length;
 
-    TRY ()
+    TRY
     {
 	if (munmap(castTransport(transport)->inShmPart,
 		   length + TRANSPORT_TAIL_SIZE(length)))

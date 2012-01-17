@@ -30,7 +30,7 @@ initJanitorClient()
     int      janitorShmFd   = atoi(environ[4]);
     int      janitorShmSize = atoi(environ[5]);
     
-    TRY ()
+    TRY
     {
 	if ((janitorShm = malloc(sizeof(GVshmptr))) == NULL)
 	{
@@ -88,7 +88,7 @@ gvBonjour(size_t offset, size_t length)
 }
 
 int
-gvAuRevoir()
+gvAuRevoir(size_t offset)
 {
     GVcmdid  cmdId = GV_CMDID_JANITOR_AUREVOIR;
     GVcallid callId;
@@ -97,6 +97,7 @@ gvAuRevoir()
     initIfNotDoneAlready();
 
     gvCall(transport, callLock, &cmdId, &callId);
+    gvPutData(transport, &offset, sizeof(size_t));
     gvEndCall(transport, callLock);
 
     gvReturn(transport, returnLock, &callId);

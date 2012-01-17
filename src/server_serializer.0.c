@@ -23,7 +23,7 @@ gvCall(GVtransportptr   transport,
        GVcmdid          *cmdId,
        GVcallid         *callId)
 {
-    TRY ()
+    TRY
     {
 	if (gvRead(transport->callBuffer, callId, sizeof(GVcallid)) == -1)
 	{
@@ -50,7 +50,7 @@ gvReturn(GVtransportptr  transport,
 	 GVlockptr       lock,
 	 GVcallid       *callId)
 {
-    TRY () 
+    TRY 
     {
 	if (gvWrite(transport->returnBuffer, callId, sizeof(GVcallid)) == -1)
 	{
@@ -77,7 +77,7 @@ gvGetData(GVtransportptr  transport,
 	  void           *data,
 	  size_t          length)
 {
-    TRY ()
+    TRY
     {
 	if (gvRead(transport->callBuffer, data, length) == -1)
 	{
@@ -97,7 +97,7 @@ gvPutData(GVtransportptr  transport,
           const void     *data,
 	  size_t          length)
 {
-    TRY ()
+    TRY
     {
 	if (gvWrite(transport->returnBuffer, data, length) == -1)
 	{

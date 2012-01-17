@@ -13,10 +13,11 @@
 #include <stdlib.h>
 
 #include "error.h"
+#include "process_state_map.h"
 #include "serializer.h"
 #include "server_dispatcher.h"
 #include "server_janitor.h"
-#include "server_state_tracker.h"
+#include "server_state_tracker.0.h"
 #include "transport.h"
 
 extern GVdispatchfunc eglGlesJumpTable[1];
@@ -34,7 +35,7 @@ struct Janitor {
 #define castJanitor(janitor) \
     ((struct Janitor *)janitor)
 
-static struct Janitor *janitor;
+static struct Janitor        *janitor;
 
 /* ****************************************************************************
  * Dispatching functions
@@ -43,20 +44,15 @@ static struct Janitor *janitor;
 static
 void _gvBonjour()
 {
-    GVtransportptr transport;
+    GVtransportptr transport = janitor->janitorTransport;
 
     GVcallid       callId;
     int            status;
-    size_t         offset; 
+    size_t         offset;
     size_t         length;
 
-    TRY ()
+    TRY
     {
-	if (gvGetCurrent(&transport) == -1)
-	{
-	    THROW(e0, "gvGetCurrent");
-	}
-
 	if (gvCall(transport, NULL, NULL, &callId) == -1)
 	{
 	    THROW(e0, "gvCall");
@@ -102,28 +98,29 @@ void _gvBonjour()
 static
 void _gvAuRevoir()
 {
-    GVtransportptr transport;
+    GVtransportptr transport = janitor->janitorTransport;
 
     GVcallid       callId;
     int            status;
+    size_t         offset;
 
-    TRY ()
+    TRY
     {
-	if (gvGetCurrent(&transport) == -1)
-	{
-	    THROW(e0, "gvGetCurrent");
-	}
-
 	if (gvCall(transport, NULL, NULL, &callId) == -1)
 	{
 	    THROW(e0, "gvCall");
+	}
+
+	if (gvGetData(transport, &offset, sizeof(size_t)) == -1)
+	{
+	    THROW(e0, "gvGetData");
 	}
 
 	if (gvEndCall(transport, NULL) == -1) {
 	    THROW(e0, "gvEndCall");
 	}
 
-	status = gvAuRevoir();
+	status = gvAuRevoir(offset);
 
 	if (gvReturn(transport, NULL, &callId) == -1)
 	{
@@ -162,14 +159,8 @@ static GVdispatchfunc gvJanitorJumpTable[2] = {
 static void
 sigtermHandler()
 {
-    TRY ()
+    TRY
     {
-	/* Terminate server state tracker */
-	if (gvTerminateStateTracker() == -1)
-	{
-	    THROW(e0, "gvTerminateStateTracker");
-	}
-
 	/* Destroy server transport (+ detach shared memory) */
 	if (gvDestroyTransport(janitor->janitorTransport) == -1)
 	{
@@ -195,7 +186,7 @@ sigtermHandler()
 int
 gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 {
-    TRY ()
+    TRY
     {
 	if ((janitor = malloc(sizeof(struct Janitor))) == NULL)
 	{
@@ -234,20 +225,10 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 		THROW(e1, "gvCreateTransport");
 	    }
 
-	    /* Initialize server state tracker for dispatch loop */	
-	    if (gvInitStateTracker() == -1)
-	    {
-		THROW(e1, "gvInitStateTracker");
-	    }
-
-	    /* Set current transport */	
-	    if (gvSetCurrent(janitor->janitorTransport) == -1)
-	    {
-		THROW(e1, "gvSetCurrent");
-	    }
-
 	    /* Start dispatching loop */	
-	    if (gvDispatchLoop(NULL, gvJanitorJumpTable, 1) == -1)
+	    if (gvDispatchLoop(janitor->janitorTransport,
+			       gvJanitorJumpTable,
+			       1) == -1)
 	    {
 		THROW(e1, "gvDispatchLoop");
 	    }
@@ -286,7 +267,7 @@ gvBonjour(size_t offset, size_t length)
 {
     GVtransportptr  transport;
  
-    TRY ()
+    TRY
     {
 	/* Create transport */
 	if (gvCreateTransport(&transport,
@@ -297,17 +278,11 @@ gvBonjour(size_t offset, size_t length)
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	/* Initialize server state tracker for dispatch loop*/	
-	if (gvInitStateTracker() == -1)
-	{
-	    THROW(e0, "gvInitStateTracker");
-	}
-
 	/* Start dispatching loop */	
 	if (gvDispatchLoop(transport, eglGlesJumpTable, 0) == -1)
 	{
 	    THROW(e0, "gvDispatchLoop");
-	} 
+	}
     }
     CATCH (e0)
     {
@@ -318,29 +293,42 @@ gvBonjour(size_t offset, size_t length)
 }
 
 int
-gvAuRevoir()
+gvAuRevoir(size_t offset)
 {
-    GVtransportptr  transport;
- 
-    TRY ()
+    pthread_t      thread;
+    GVtransportptr transport;
+
+    TRY
     {
-	/* Create transport */
-	if (gvGetCurrent(&transport) == -1)
+	puts("CHECKPOINT A");
+
+	if (gvGetJanitorState(offset, &thread, &transport) == -1)
 	{
-	    THROW(e0, "gvGetCurrent");
+	    THROW(e0, "gvGetJanitorState");
 	}
 
-	/* Terminate server state tracker */
-	if (gvTerminateStateTracker() == -1)
+	puts("CHECKPOINT B");
+
+	if (pthread_cancel(thread) != 0)
 	{
-	    THROW(e0, "gvTerminateStateTracker");
+	    THROW(e0, "pthread_cancel");
 	}
 
-	/* Destroy server transport (+ detach shared memory) */
+	puts("CHECKPOINT C");
+
 	if (gvDestroyTransport(transport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}
+
+	puts("CHECKPOINT D");
+
+	if (gvDelJanitorState(offset) == -1)
+	{
+	    THROW(e0, "gvDelJanitorState");
+	}
+
+	puts("CHECKPOINT D");
     }
     CATCH (e0)
     {
@@ -353,7 +341,7 @@ gvAuRevoir()
 int
 gvStopJanitor(GVjanitorptr janitor)
 {
-    TRY ()
+    TRY
     {
 	if (kill(castJanitor(janitor)->janitorPid, SIGTERM) == -1)
 	{

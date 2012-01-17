@@ -21,7 +21,6 @@
 #include "serializer.h"
 #include "server_dispatcher.h"
 #include "server_heap_manager.h"
-#include "server_state_tracker.h"
 #include "transport.h"
 
 /* ****************************************************************************
@@ -53,20 +52,15 @@ static struct HeapMgr *heapMgr;
 static
 void _gvAlloc()
 {
-    GVtransportptr transport;
+    GVtransportptr transport = heapMgr->heapMgrTransport;
 
     GVcallid       callId;
     int            status;
     size_t         length;
     size_t         offset; 
 
-    TRY ()
+    TRY
     {
-	if (gvGetCurrent(&transport) == -1)
-	{
-	    THROW(e0, "gvGetCurrent");
-	}
-
 	if (gvCall(transport, NULL, NULL, &callId) == -1)
 	{
 	    THROW(e0, "gvCall");
@@ -112,19 +106,14 @@ void _gvAlloc()
 static
 void _gvFree()
 {
-    GVtransportptr transport;
+    GVtransportptr transport = heapMgr->heapMgrTransport;
 
     GVcallid       callId;
     int            status;
     size_t         offset;
 
-    TRY ()
+    TRY
     {
-	if (gvGetCurrent(&transport) == -1)
-	{
-	    THROW(e0, "gvGetCurrent");
-	}
-
 	if (gvCall(transport, NULL, NULL, &callId) == -1)
 	{
 	    THROW(e0, "gvCall");
@@ -178,7 +167,7 @@ static GVdispatchfunc gvHeapMgrJumpTable[2] = {
 static
 void createHeapMgrResources()
 {
-    TRY ()
+    TRY
     {
 	/* Create transport */
 	if (gvCreateTransport(&(heapMgr->heapMgrTransport),
@@ -198,7 +187,7 @@ void createHeapMgrResources()
 static
 void createVmResources()
 {
-    TRY ()
+    TRY
     {
 	/* Find an appropriate logical memory region */
 	if ((heapMgr->vmShmAddr
@@ -240,7 +229,7 @@ void createVmResources()
 static
 void destroyHeapMgrResources()
 {
-    TRY ()
+    TRY
     {
 	/* Destroy transport (+ detach shared memory) */
 	if (gvDestroyTransport(heapMgr->heapMgrTransport) == -1)
@@ -263,7 +252,7 @@ void destroyHeapMgrResources()
 static
 void destroyVmResources()
 {
-    TRY ()
+    TRY
     {
 	/* Destroy dlmalloc mspace */
 	if (destroy_mspace(heapMgr->vmHeap) == -1)
@@ -308,7 +297,7 @@ sigtermHandler()
 int
 gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
 {
-    TRY ()
+    TRY
     {
 	if ((heapMgr = malloc(sizeof(struct HeapMgr))) == NULL)
 	{
@@ -347,20 +336,10 @@ gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
 	    /* Create memory manager transport, dispatcher */
 	    createHeapMgrResources();
 
-	    /* Initialize server state tracker for dispatch loop */	
-	    if (gvInitStateTracker() == -1)
-	    {
-		THROW(e1, "gvInitStateTracker");
-	    }
-
-	    /* Set current transport */	
-	    if (gvSetCurrent(heapMgr->heapMgrTransport) == -1)
-	    {
-		THROW(e1, "gvSetCurrent");
-	    }
-
 	    /* Start dispatching loop */	
-	    if (gvDispatchLoop(NULL, gvHeapMgrJumpTable, 1) == -1)
+	    if (gvDispatchLoop(heapMgr->heapMgrTransport,
+			       gvHeapMgrJumpTable,
+			       1) == -1)
 	    {
 		THROW(e1, "gvDispatchLoop");
 	    }
@@ -399,7 +378,7 @@ gvAlloc(size_t *offset, size_t length)
 {
     void *addr;
 
-    TRY ()
+    TRY
     {
 	if ((addr
 	     = mspace_memalign(heapMgr->vmHeap, systemPageSize, length)) == NULL)
@@ -428,7 +407,7 @@ gvFree(size_t offset)
 int
 gvStopHeapMgr(GVheapmgrptr heapMgr)
 {
-    TRY ()
+    TRY
     {
 	if (kill(castHeapMgr(heapMgr)->heapMgrPid, SIGTERM) == -1)
 	{

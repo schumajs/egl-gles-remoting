@@ -9,17 +9,12 @@
  * \details
  */
 
-#define _MULTI_THREADED
-#include <pthread.h>
-#include <stdio.h>
 #include <uthash.h>
 
 #include "client_state_tracker.h"
 #include "error.h"
+#include "thread_state.h"
 
-/* ***************************************************************************
- * State tracking
- */
 
 struct ThreadState {
     /* EGL context */
@@ -38,20 +33,22 @@ struct ThreadState {
     UT_hash_handle hh;
 };
 
-typedef struct ThreadState *ThreadStatePtr;
+/* ***************************************************************************
+ * Thread state hashtable
+ */
 
-static ThreadStatePtr   threadStateHash     = NULL;
-static pthread_rwlock_t threadStateHashLock = PTHREAD_RWLOCK_INITIALIZER;
+static ThreadStatePtr   stateHash     = NULL;
+static pthread_rwlock_t stateHashLock = PTHREAD_RWLOCK_INITIALIZER;
 
 static void
 hashDel(ThreadStatePtr state)
 {
-    HASH_DEL(threadStateHash, state);
+    HASH_DEL(stateHash, state);
 }
 
 static ThreadStatePtr
 hashGet(EGLDisplay display,
-	       EGLContext context)
+	EGLContext context)
 {
     struct ThreadState  pattern;
     struct ThreadState *state;
@@ -60,76 +57,32 @@ hashGet(EGLDisplay display,
     pattern.context.display = display;
     pattern.context.context = context;
 
-    HASH_FIND(hh, threadStateHash, &pattern.context, sizeof(struct Context),
-	      state);
+    HASH_FIND(hh, stateHash, &pattern.context, sizeof(struct Context), state);
 
     return state;
 }
 
 void
 hashPut(ThreadStatePtr state) {
-    HASH_ADD(hh, threadStateHash, context, sizeof(struct Context), state);
-}
-
-/* ***************************************************************************
- * pthread - thread specific data
- */
-
-pthread_mutex_t      initTerminateLock = PTHREAD_MUTEX_INITIALIZER;
-static int           threadCounter     =  0;
-static pthread_key_t threadSpecificKey = -1;
-
-static void
-threadSpecificDataDestructor(void *threadSpecificData) {
-    pthread_setspecific(threadSpecificKey, NULL);
+    HASH_ADD(hh, stateHash, context, sizeof(struct Context), state);
 }
 
 /* ****************************************************************************
  * Client state tracker implementation
  */
 
-#define getCurrentThreadState() \
-    ((ThreadStatePtr) pthread_getspecific(threadSpecificKey))
-
-#define setCurrentThreadState(state) \
-    pthread_setspecific(threadSpecificKey, state)
-
 int
 gvInitStateTracker()
 {
-    TRY ()
+    TRY
     {
-	if (pthread_mutex_lock(&initTerminateLock) != 0)
+	if (gvInitThreadState() == -1)
 	{
-	    THROW(e0, "pthread_mutex_lock");
-	}
-
-	if (threadSpecificKey == -1)
-	{
-	    if (pthread_key_create(&threadSpecificKey,
-				   threadSpecificDataDestructor) != 0)
-	    {
-		THROW(e1, "pthread_key_create");
-	    }
-	}
-    
-	threadCounter++;
-
-	if (pthread_mutex_unlock(&initTerminateLock) != 0)
-	{
-	    THROW(e1, "pthread_mutex_unlock");
+	    THROW(e0, "gvInitThreadState");
 	}
     }
     CATCH (e0)
     {
-	return -1;
-    }
-    CATCH (e1)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-         * fails, so just ignore errors.
-         */
-	pthread_mutex_unlock(&initTerminateLock);
 	return -1;
     }
    
@@ -142,9 +95,9 @@ gvTrack(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_wrlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
@@ -170,7 +123,7 @@ gvTrack(EGLDisplay display,
 	    THROW(e1, "context already exists");
 	}
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -184,7 +137,7 @@ gvTrack(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -197,9 +150,9 @@ gvUntrack(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_wrlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
@@ -214,7 +167,7 @@ gvUntrack(EGLDisplay display,
 	    THROW(e1, "no such context");
 	}
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -228,7 +181,7 @@ gvUntrack(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -241,9 +194,9 @@ gvIsMarkedCurrent(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_rdlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_rdlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_rdlock");
 	}
@@ -253,7 +206,7 @@ gvIsMarkedCurrent(EGLDisplay display,
 	    THROW(e1, "no such context");
 	}
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -267,7 +220,7 @@ gvIsMarkedCurrent(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -280,9 +233,9 @@ gvMarkCurrent(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_wrlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
@@ -294,7 +247,7 @@ gvMarkCurrent(EGLDisplay display,
 
 	state->markedCurrent = 1;
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -308,7 +261,7 @@ gvMarkCurrent(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -321,9 +274,9 @@ gvIsMarkedDestroyed(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_rdlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_rdlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_rdlock");
 	}
@@ -333,7 +286,7 @@ gvIsMarkedDestroyed(EGLDisplay display,
 	    THROW(e1, "no such context");
 	}
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_mutex_unlock");
 	}
@@ -347,7 +300,7 @@ gvIsMarkedDestroyed(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -360,9 +313,9 @@ gvMarkDestroyed(EGLDisplay display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_wrlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
@@ -374,7 +327,7 @@ gvMarkDestroyed(EGLDisplay display,
 
 	state->markedDestroyed = 1;
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -388,7 +341,7 @@ gvMarkDestroyed(EGLDisplay display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -402,9 +355,9 @@ gvGetCurrent(EGLDisplay     *display,
 {
     ThreadStatePtr state; 
 
-    TRY ()
+    TRY
     {
-	if ((state = getCurrentThreadState()) == NULL)
+	if (gvGetThreadState(&state) == -1)
 	{
 	    THROW(e0, "no current context");
 	}
@@ -428,9 +381,9 @@ gvSetCurrent(EGLDisplay     display,
 {
     ThreadStatePtr state;
 
-    TRY ()
+    TRY
     {
-	if (pthread_rwlock_wrlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
@@ -443,12 +396,12 @@ gvSetCurrent(EGLDisplay     display,
 	state->markedCurrent = 1;
 	state->transport     = transport;
 
-	if (setCurrentThreadState(state) != 0)
+	if (gvSetThreadState(state) == -1)
 	{
-	    THROW(e1, "pthread_setspecific");
+	    THROW(e1, "gvSetThreadState");
 	}
 
-	if (pthread_rwlock_unlock(&threadStateHashLock) != 0)
+	if (pthread_rwlock_unlock(&stateHashLock) != 0)
 	{
 	    THROW(e1, "pthread_rwlock_unlock");
 	}
@@ -462,7 +415,7 @@ gvSetCurrent(EGLDisplay     display,
 	/* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&threadStateHashLock);
+	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
@@ -470,44 +423,19 @@ gvSetCurrent(EGLDisplay     display,
 }
 
 int
-gvTerminateStateTracker()
+gvTermStateTracker()
 {
-    TRY ()
+    TRY
     {
-	if (pthread_mutex_lock(&initTerminateLock) != 0)
+	if (gvTermThreadState() == -1)
 	{
-	    THROW(e0, "pthread_mutex_lock");
-	}
-
-	if (threadCounter == 1)
-	{
-	    if (pthread_key_delete(threadSpecificKey) != 0)
-	    {
-		THROW(e1, "pthread_key_delete");
-	    }
-	
-	    threadSpecificKey = -1;
-	}
-
-	threadCounter--;
-
-	if (pthread_mutex_unlock(&initTerminateLock) != 0)
-	{
-	    THROW(e1, "pthread_mutex_unlock");
+	    THROW(e0, "gvInitThreadState");
 	}
     }
     CATCH (e0)
     {
 	return -1;
     }
-    CATCH (e1)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-         * fails, so just ignore errors.
-         */
-	pthread_mutex_unlock(&initTerminateLock);
-	return -1;
-    } 
-
+   
     return 0;
 }
