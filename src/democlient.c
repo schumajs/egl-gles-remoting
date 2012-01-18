@@ -1,5 +1,6 @@
 #include "errno.h"
 #include "error.h"
+#include "heap_manager.h"
 #include "janitor.h"
 #include "sleep.h"
 
@@ -7,52 +8,86 @@ int main()
 {
     TRY
     {
-	int    status  = 1;
-	size_t offset0 = 4096;
-	size_t offset1 = 4 * 4096;
+	int status;
 
-	puts("\nBonjour 1\n");
+	size_t offset0;
+	size_t length0 = 3 * 4096;
 
-	if ((status = gvBonjour(offset0, 3 * 4096)) == -1)
+	size_t offset1;
+	size_t length1 = 3 * 4096;
+
+	if (gvAlloc(&offset0, length0) == -1)
 	{
-	    errno = -1;
-	    THROW(e0, "gvBonjour");
+	    THROW(e0, "gvAlloc");
 	}
 
-	printf("STATUS0 %i\n", status);
-
-	puts("\nBonjour 2\n");
-
-	if ((status = gvBonjour(offset1, 3 * 4096)) == -1)
+	if (gvAlloc(&offset1, length1) == -1)
 	{
-	    errno = -1;
-	    THROW(e0, "gvBonjour");
+	    THROW(e0, "gvAlloc");
 	}
 
-	printf("STATUS1 %i\n", status);
+	printf("1. CLIENT -- OFFSET %zu LENGTH %zu\n", offset0, length0);
 
+	printf("2. CLIENT -- OFFSET %zu LENGTH %zu\n", offset1, length1);
+
+	if ((status = gvBonjour(offset0, length0)) == -1)
+	{
+	    THROW(e0, "gvBonjour");
+	}
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
+
+	if ((status = gvBonjour(offset1, length1)) == -1)
+	{
+	    THROW(e0, "gvBonjour");
+	}
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
+
+	puts("PAUSE");
 	gvSleep(10, 0);
-
-	puts("\nAu Revoir 1\n");
 
 	if ((status = gvAuRevoir(offset0)) == -1)
 	{
-	    errno = -1;
 	    THROW(e0, "gvAuRevoir");
 	}
-
-	printf("STATUS2 %i\n", status);
-
-	puts("\nAu Revoir 2\n");
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
 
 	if ((status = gvAuRevoir(offset1)) == -1)
 	{
-	    errno = -1;
 	    THROW(e0, "gvAuRevoir");
 	}
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
 
-	printf("STATUS3 %i\n", status);
-	
+	if ((status = gvFree(offset0)) == -1)
+	{
+	    THROW(e0, "gvFree");
+	}
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
+
+	if ((status = gvFree(offset0)) == -1)
+	{
+	    THROW(e0, "gvFree");
+	}
+	else
+	{
+	    printf("STATUS %i\n", status);
+	}
+
+	puts("WELL DONE");
     }
     CATCH (e0)
     {
@@ -61,6 +96,5 @@ int main()
     }
 
     puts("DEMOCLIENT SUCCESS");
-
     return 0;
 }

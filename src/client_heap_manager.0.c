@@ -1,8 +1,8 @@
 /*! ***************************************************************************
- * \file    client_janitor.0.c
+ * \file    client_heap_manager.0.c
  * \brief
  * 
- * \date    January 6, 2012
+ * \date    December 24, 2011
  * \author  Jens Schumann
  *          schumajs@googlemail.com
  *
@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #include "error.h"
-#include "janitor.h"
+#include "heap_manager.h"
 #include "lock.h"
 #include "serializer.h"
 #include "transport.h"
@@ -26,23 +26,23 @@ static GVlockptr        callLock;
 static GVlockptr        returnLock;
 
 static int
-initJanitorClient()
+initHeapMgrClient()
 {    
-    GVshmptr janitorShm;
-    int      janitorShmFd   = atoi(environ[4]);
-    int      janitorShmSize = atoi(environ[5]);
+    GVshmptr heapMgrShm;
+    int      heapMgrShmFd   = atoi(environ[2]);
+    int      heapMgrShmSize = atoi(environ[3]);
     
     TRY
     {
-	if ((janitorShm = malloc(sizeof(GVshmptr))) == NULL)
+	if ((heapMgrShm = malloc(sizeof(GVshmptr))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	janitorShm->id   = janitorShmFd;
-	janitorShm->size = janitorShmSize;
+	heapMgrShm->id   = heapMgrShmFd;
+	heapMgrShm->size = heapMgrShmSize;
 
-	if (gvCreateTransport(&transport, janitorShm, 0, janitorShmSize) == -1)
+	if (gvCreateTransport(&transport, heapMgrShm, 0, heapMgrShmSize) == -1)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}
@@ -62,36 +62,38 @@ initJanitorClient()
     do {						\
 	if (!processInitiated)				\
 	{						\
-	    if (initJanitorClient() == -1) return -1;	\
+	    if (initHeapMgrClient() == -1) return -1;	\
 	    processInitiated = 1;			\
 	}						\
     } while (0)
 
 int
-gvBonjour(size_t offset, size_t length)
+gvAlloc(size_t *offset, size_t length)
 {
-    GVcmdid   cmdId = GV_CMDID_JANITOR_BONJOUR;
-    GVcallid  callId;
-    int       status;
+    GVcallid cmdId = GV_CMDID_HMGR_ALLOC;
+    GVcallid callId;
+    int      status;
 
     initIfNotDoneAlready();
 
     gvCall(transport, callLock, &cmdId, &callId);
-    gvPutData(transport, &offset, sizeof(size_t));
     gvPutData(transport, &length, sizeof(size_t));
     gvEndCall(transport, callLock);
 
     gvReturn(transport, returnLock, &callId);
     gvGetData(transport, &status, sizeof(int));
+    gvGetData(transport, offset, sizeof(size_t));
     gvEndReturn(transport, returnLock);
+
+    puts("CLIENT ALLOC C");
 
     return status;
 }
 
 int
-gvAuRevoir(size_t offset)
+gvFree(size_t offset)
 {
-    GVcmdid  cmdId = GV_CMDID_JANITOR_AUREVOIR;
+    GVcallid cmdId = GV_CMDID_HMGR_FREE;
     GVcallid callId;
     int      status;
 
@@ -100,6 +102,8 @@ gvAuRevoir(size_t offset)
     gvCall(transport, callLock, &cmdId, &callId);
     gvPutData(transport, &offset, sizeof(size_t));
     gvEndCall(transport, callLock);
+
+    printf("%i %i\n", cmdId, callId);
 
     gvReturn(transport, returnLock, &callId);
     gvGetData(transport, &status, sizeof(int));

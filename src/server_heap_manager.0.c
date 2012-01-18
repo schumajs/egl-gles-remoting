@@ -398,7 +398,7 @@ gvAlloc(size_t *offset, size_t length)
 
 int
 gvFree(size_t offset)
-{
+{    
     mspace_free(heapMgr->vmHeap, heapMgr->vmShmAddr + offset);
 
     return 0;
