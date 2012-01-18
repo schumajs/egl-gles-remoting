@@ -17,23 +17,14 @@
 
 #include "transport.h"
 
-/*! ***************************************************************************
- * \brief
- *
- * \param  [out] transport
- * \return
- */
-int
-gvGetCurrentThreadTransport(GVtransportptr *transport);
+struct GVjanitorstate {
+    pthread_t      thread;
+    GVtransportptr transport;
+};
 
-/*! ***************************************************************************
- * \brief
- *
- * \param  [in] transport
- * \return
- */
-int
-gvSetCurrentThreadTransport(GVtransportptr transport);
+typedef struct GVjanitorstate *GVjanitorstateptr;
+
+typedef GVtransportptr GVdispatcherstateptr;
 
 /*! ***************************************************************************
  * \brief
@@ -47,27 +38,50 @@ gvDelJanitorState(size_t offset);
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in]  offset
- * \param  [out] thread
- * \param  [out] transport
+ * \param  [in] offset
+ * \param  [out] state
  * \return
  */
 int
-gvGetJanitorState(size_t          offset,
-		  pthread_t      *thread,
-		  GVtransportptr *transport);
+gvGetJanitorState(size_t             offset,
+		  GVjanitorstateptr *state);
 
 /*! ***************************************************************************
  * \brief
  *
  * \param  [in] offset
- * \param  [in] thread
- * \param  [in] transport
+ * \param  [in] state
  * \return
  */
 int
-gvPutJanitorState(size_t         offset,
-		  pthread_t      thread,
-		  GVtransportptr transport);
+gvSetJanitorState(size_t            offset,
+		  GVjanitorstateptr state);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] state
+ * \return
+ */
+int
+gvDelDispatcherState(GVdispatcherstateptr state);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [out] state
+ * \return
+ */
+int
+gvGetDispatcherState(GVdispatcherstateptr *state);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] state
+ * \return
+ */
+int
+gvSetDispatcherState(GVdispatcherstateptr state);
 
 #endif /* SERVER_STATE_TRACKER_0_H_ */

@@ -71,7 +71,7 @@ int main()
 
 	demoClient();
 
-	gvSleep(10, 0);
+	gvSleep(30, 0);
 
 	if (gvStopJanitor(janitor) == -1)
 	{
@@ -85,10 +85,12 @@ int main()
     }
     CATCH (e0)
     {
-	puts("ERROR");
+	puts("DASHBOARD ERROR");
+	return -1;
     }
 
-    puts("SUCCESS");
+    puts("DASHBOARD SUCCESS");
+    return 0;
 }
 
 /*

@@ -295,40 +295,29 @@ gvBonjour(size_t offset, size_t length)
 int
 gvAuRevoir(size_t offset)
 {
-    pthread_t      thread;
-    GVtransportptr transport;
+    GVjanitorstateptr janitorState;
 
     TRY
     {
-	puts("CHECKPOINT A");
-
-	if (gvGetJanitorState(offset, &thread, &transport) == -1)
+	if (gvGetJanitorState(offset, &janitorState) == -1)
 	{
 	    THROW(e0, "gvGetJanitorState");
 	}
 
-	puts("CHECKPOINT B");
-
-	if (pthread_cancel(thread) != 0)
+	if (pthread_cancel(janitorState->thread) != 0)
 	{
 	    THROW(e0, "pthread_cancel");
 	}
 
-	puts("CHECKPOINT C");
-
-	if (gvDestroyTransport(transport) == -1)
+	if (gvDestroyTransport(janitorState->transport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}
-
-	puts("CHECKPOINT D");
 
 	if (gvDelJanitorState(offset) == -1)
 	{
 	    THROW(e0, "gvDelJanitorState");
 	}
-
-	puts("CHECKPOINT D");
     }
     CATCH (e0)
     {

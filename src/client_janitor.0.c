@@ -47,8 +47,6 @@ initJanitorClient()
 
 	callLock = transport->callBuffer->clientLock;
 	returnLock = transport->returnBuffer->clientLock;
-
-	processInitiated = 1;
     }
     CATCH (e0)
     {
@@ -63,6 +61,7 @@ initJanitorClient()
 	if (!processInitiated)				\
 	{						\
 	    if (initJanitorClient() == -1) return -1;	\
+	    processInitiated = 1;			\
 	}						\
     } while (0)
 
@@ -101,7 +100,7 @@ gvAuRevoir(size_t offset)
     gvEndCall(transport, callLock);
 
     gvReturn(transport, returnLock, &callId);
-    gvPutData(transport, &status, sizeof(int));
+    gvGetData(transport, &status, sizeof(int));
     gvEndReturn(transport, returnLock);
 
     return status;

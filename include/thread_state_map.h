@@ -23,40 +23,33 @@ gvInitThreadStateMap(void);
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] keyPtr
- * \param  [in] keyLength
- * \param  [in] valPtr
+ * \param  [in] key
  * \return
  */
 int
-gvDelThreadState(void   *keyPtr,
-                 size_t  keyLength);
+gvDelThreadState(unsigned long key);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in]  keyPtr
- * \param  [in]  keyLength
- * \param  [out] valPtr
+ * \param  [in]  key
+ * \param  [out] value
  * \return
  */
 int
-gvGetThreadState(void    *keyPtr,
-                 size_t   keyLength,
-		 void   **valPtr);
+gvGetThreadState(unsigned long int   key,
+		 void              **value);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] keyPtr
- * \param  [in] keyLength
- * \param  [in] valPtr
+ * \param  [in] key
+ * \param  [in] value
  * \return
  */
 int
-gvPutThreadState(void   *keyPtr,
-                 size_t  keyLength,
-		 void   *valPtr);
+gvPutThreadState(unsigned long int  key,
+		 void              *value);
 
 /*! ***************************************************************************
  * \brief

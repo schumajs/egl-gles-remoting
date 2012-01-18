@@ -9,6 +9,7 @@
  * \details
  */
 
+#include <errno.h>
 #include <pthread.h>
 #include <uthash.h>
 
@@ -21,18 +22,18 @@
  */
 
 struct Item {
-    void           *valPtr;
-    UT_hash_handle  hh;
+    unsigned long int  key;
+    void              *value;
+    UT_hash_handle     hh;
 };
 
 static struct Item      *hashtable     = NULL;
 static pthread_rwlock_t  hashtableLock = PTHREAD_RWLOCK_INITIALIZER;
 
 int
-gvDelProcessState(void   *keyPtr,
-                  size_t  keyLength)
+gvDelProcessState(unsigned long int key)
 {
-    struct Item *item;
+    struct Item *item = NULL;
 
     TRY
     {
@@ -41,8 +42,16 @@ gvDelProcessState(void   *keyPtr,
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
 
-	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
+
+	if (item == NULL)
+	{
+	    errno = EINVAL;
+	    THROW(e0, "no such item");
+	}
+
 	HASH_DELETE(hh, hashtable, item);
+
 	free(item);
 
 	if (pthread_rwlock_unlock(&hashtableLock) != 0)
@@ -59,11 +68,10 @@ gvDelProcessState(void   *keyPtr,
 }
 
 int
-gvGetProcessState(void    *keyPtr,
-		  size_t   keyLength,
-		  void   **valPtr)
+gvGetProcessState(unsigned long int   key,
+		  void              **value)
 {
-    struct Item *item;
+    struct Item *item = NULL;
     
     TRY
     {
@@ -72,21 +80,15 @@ gvGetProcessState(void    *keyPtr,
 	    THROW(e0, "pthread_rwlock_rdlock");
 	}
 
-	puts("AAA");
-
-	printf("GET COUNT1 %i\n", HASH_COUNT(hashtable));
-
-	printf("GETTING %zu\n", *((size_t *)keyPtr));
-
-	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
 	
-	puts("HIER");
+	if (item == NULL)
+	{
+	    errno = EINVAL;
+	    THROW(e0, "no such item");
+	}
 
-	printf("ITEM %p", item);
-
-	*valPtr = item->valPtr;
-
-	puts("AAB");
+	*value = item->value;
 
 	if (pthread_rwlock_unlock(&hashtableLock) != 0)
 	{
@@ -102,32 +104,27 @@ gvGetProcessState(void    *keyPtr,
 }
 
 int
-gvPutProcessState(void   *keyPtr,
-		  size_t  keyLength,
-		  void   *valPtr)
+gvPutProcessState(unsigned long int  key,
+		  void              *value)
 {
     struct Item *item;
 
     TRY
     {
-	if ((item = malloc(sizeof(struct Item))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
 	if (pthread_rwlock_wrlock(&hashtableLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_wrlock");
 	}
 
-	printf("PUT COUNT1 %i\n", HASH_COUNT(hashtable));
+	if ((item = malloc(sizeof(struct Item))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
 
-	printf("PUTTING %zu\n", *((size_t *)keyPtr));
+	item->key   = key;
+	item->value = value;
 
-	item->valPtr = valPtr;
-	HASH_ADD_KEYPTR(hh, hashtable, keyPtr, keyLength, item);
-
-	printf("PUT COUNT2 %i\n", HASH_COUNT(hashtable));
+	HASH_ADD(hh, hashtable, key, sizeof(unsigned long int), item);
 
 	if (pthread_rwlock_unlock(&hashtableLock) != 0)
 	{

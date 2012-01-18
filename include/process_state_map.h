@@ -15,38 +15,32 @@
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] keyPtr
- * \param  [in] keyLength
+ * \param  [in] key
  * \return
  */
 int
-gvDelProcessState(void   *keyPtr,
-                  size_t  keyLength);
+gvDelProcessState(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] keyPtr
- * \param  [in] keyLength
- * \param  [in] valPtr
+ * \param  [in]  key
+ * \param  [out] value
  * \return
  */
 int
-gvGetProcessState(void   *keyPtr,
-                  size_t  keyLength,
-		  void   **valPtr);
+gvGetProcessState(unsigned long int   key,
+		  void              **value);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] keyPtr
- * \param  [in] keyLength
- * \param  [in] valPtr
+ * \param  [in] key
+ * \param  [in] value
  * \return
  */
 int
-gvPutProcessState(void   *keyPtr,
-                  size_t  keyLength,
-		  void   *valPtr);
+gvPutProcessState(unsigned long int  key,
+		  void              *value);
 
 #endif /* PROCESS_STATE_MAP_H_*/

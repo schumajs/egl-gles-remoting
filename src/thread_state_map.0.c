@@ -21,8 +21,9 @@
  */
 
 struct Item {
-    void           *valPtr;
-    UT_hash_handle  hh;
+    unsigned long int  key;
+    void              *value;
+    UT_hash_handle     hh;
 };
 
 #define getThreadSpecificData() \
@@ -32,7 +33,7 @@ struct Item {
     pthread_setspecific(threadSpecificKey, data)
 
 pthread_mutex_t      initTerminateLock = PTHREAD_MUTEX_INITIALIZER;
-static int           threadCounter     =  0;
+static int           threadRefCounter     =  0;
 static pthread_key_t threadSpecificKey = -1;
 
 static void
@@ -59,7 +60,7 @@ gvInitThreadStateMap()
 	    }
 	}
     
-	threadCounter++;
+	threadRefCounter++;
 
 	if (pthread_mutex_unlock(&initTerminateLock) != 0)
 	{
@@ -83,10 +84,9 @@ gvInitThreadStateMap()
 }
 
 int
-gvDelThreadState(void    *keyPtr,
-		 size_t   keyLength)
+gvDelThreadState(unsigned long key)
 {
-    struct Item *item;
+    struct Item *item = NULL;
     struct Item *hashtable;
 
     TRY
@@ -96,8 +96,15 @@ gvDelThreadState(void    *keyPtr,
 	    THROW(e0, "no thread state");
 	}
 
-	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
+
+	if (item == NULL)
+	{
+	    THROW(e0, "no such item");
+	}
+
 	HASH_DELETE(hh, hashtable, item);
+
 	free(item);
     }
     CATCH (e0)
@@ -109,11 +116,10 @@ gvDelThreadState(void    *keyPtr,
 }
 
 int
-gvGetThreadState(void    *keyPtr,
-		 size_t   keyLength,
-		 void   **valPtr)
+gvGetThreadState(unsigned long int   key,
+		 void              **value)
 {
-    struct Item *item;
+    struct Item *item = NULL;
     struct Item *hashtable;
 
     TRY
@@ -123,9 +129,14 @@ gvGetThreadState(void    *keyPtr,
 	    THROW(e0, "no thread state");
 	}
 
-	HASH_FIND(hh, hashtable, keyPtr, keyLength, item);
+	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
 
-	*valPtr = item->valPtr;   
+	if (item == NULL)
+	{
+	    THROW(e0, "no such item");
+	}
+
+	*value = item->value;   
     }
     CATCH (e0)
     {
@@ -136,9 +147,8 @@ gvGetThreadState(void    *keyPtr,
 }
 
 int
-gvPutThreadState(void   *keyPtr,
-		 size_t  keyLength,
-		 void   *valPtr)
+gvPutThreadState(unsigned long int  key,
+		 void              *value)
 {
     struct Item *item;
     struct Item *hashtable;
@@ -150,15 +160,16 @@ gvPutThreadState(void   *keyPtr,
 	    THROW(e0, "malloc");
 	}
 
-	item->valPtr = valPtr;
+	item->key   = key;
+	item->value = value;
 
 	if ((hashtable = (struct Item *)getThreadSpecificData()) != NULL)
 	{	 
-	    HASH_ADD_KEYPTR(hh, hashtable, keyPtr, keyLength, item);
+	    HASH_ADD(hh, hashtable, key, sizeof(unsigned long int), item);
 	}
 	else
 	{
-	    HASH_ADD_KEYPTR(hh, hashtable, keyPtr, keyLength, item);
+	    HASH_ADD(hh, hashtable, key, sizeof(unsigned long int), item);
 
 	    if (setThreadSpecificData(hashtable) != 0)
 	    {
@@ -184,7 +195,7 @@ gvTermThreadStateMap()
 	    THROW(e0, "pthread_mutex_lock");
 	}
 
-	if (threadCounter == 1)
+	if (threadRefCounter == 1)
 	{
 	    if (pthread_key_delete(threadSpecificKey) != 0)
 	    {
@@ -194,7 +205,7 @@ gvTermThreadStateMap()
 	    threadSpecificKey = -1;
 	}
 
-	threadCounter--;
+	threadRefCounter--;
 
 	if (pthread_mutex_unlock(&initTerminateLock) != 0)
 	{

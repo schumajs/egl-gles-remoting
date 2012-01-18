@@ -16,57 +16,22 @@
 #include "server_state_tracker.0.h"
 #include "thread_state_map.h"
 
-struct JanitorState {
-    pthread_t      thread;
-    GVtransportptr transport;
-};
+/* ***************************************************************************
+ * Server state tracker implementation
+ */
 
-static int currentThreadTransportKey = 0;
+#define DISPATCHER_STATE_KEY 0
 
-int
-gvGetCurrentThreadTransport(GVtransportptr *transport)
-{
-    void *tempTransport;
+static int threadStateMapInitiated = 0;
 
-    TRY
-    {
-	if (gvGetThreadState(&currentThreadTransportKey,
-			     sizeof(int),
-			     &tempTransport) == -1)
-	{
-	    THROW(e0, "gvPutThreadState");
-	}
-
-	*transport = tempTransport;
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvSetCurrentThreadTransport(GVtransportptr transport)
-{
-    TRY
-    {
-	/* NOTE: only set once in concept 0, so no collisions */
-	if (gvPutThreadState(&currentThreadTransportKey,
-			     sizeof(int),
-			     transport) == -1)
-	{
-	    THROW(e0, "gvPutThreadState");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
+#define initIfNotDoneAlready()					\
+    do {							\
+	if (!threadStateMapInitiated)				\
+	{							\
+	    if (gvInitThreadStateMap() == -1) return -1;	\
+	    threadStateMapInitiated = 1;			\
+	}							\
+    } while (0)
 
 int
 gvDelJanitorState(size_t offset)
@@ -75,19 +40,15 @@ gvDelJanitorState(size_t offset)
 
     TRY
     {
-	if (gvGetProcessState(&offset,
-			      sizeof(size_t),
-			      &tempState) == -1)
+	if (gvGetProcessState(offset, &tempState) == -1)
 	{
 	    THROW(e0, "gvGetProcessState");
 	}
 
-	if (gvDelProcessState(&offset, sizeof(size_t)) == -1)
+	if (gvDelProcessState(offset) == -1)
 	{
 	    THROW(e0, "gvDelProcessState");
 	}
-
-	free(tempState);
     }
     CATCH (e0)
     {
@@ -98,30 +59,19 @@ gvDelJanitorState(size_t offset)
 }
 
 int
-gvGetJanitorState(size_t          offset,
-		  pthread_t      *thread,
-		  GVtransportptr *transport)
+gvGetJanitorState(size_t             offset,
+		  GVjanitorstateptr *state)
 {
-    struct JanitorState *state;
-    void                *tempState;
+    void *tempState;
 
     TRY
     {
-	puts("AA");
-
-	if (gvGetProcessState(&offset,
-			      sizeof(size_t),
-			      &tempState) == -1)
+	if (gvGetProcessState(offset, &tempState) == -1)
 	{
 	    THROW(e0, "gvGetProcessState");
 	}
 
-	puts("AB");
-
-	state = (struct JanitorState *)tempState;
-
-	*thread    = state->thread;
-	*transport = state->transport;
+	*state = (GVjanitorstateptr) tempState;
     }
     CATCH (e0)
     {
@@ -132,30 +82,82 @@ gvGetJanitorState(size_t          offset,
 }
 
 int
-gvPutJanitorState(size_t         offset,
-		  pthread_t      thread,
-		  GVtransportptr transport)
+gvSetJanitorState(size_t            offset,
+		  GVjanitorstateptr state)
 {
-    struct JanitorState *state;
-
     TRY
     {
-	if ((state = malloc(sizeof(struct JanitorState))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
-	state->thread    = thread;
-	state->transport = transport;
-
 	/* NOTE: heap manager guarantees that a particular offset is used only
 	 * once at a time, so no collisions
 	 */
-	if (gvPutProcessState(&offset,
-			      sizeof(size_t),
-			      state) == -1)
+	if (gvPutProcessState(offset, state) == -1)
 	{
 	    THROW(e0, "gvPutProcessState");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvDelDispatcherState(GVdispatcherstateptr state)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	if (gvDelThreadState(DISPATCHER_STATE_KEY) == -1)
+	{
+	    THROW(e0, "gvDelThreadState");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvGetDispatcherState(GVdispatcherstateptr *state)
+{
+    void *tempState;
+
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	if (gvGetThreadState(DISPATCHER_STATE_KEY, &tempState) == -1)
+	{
+	    THROW(e0, "gvGetThreadState");
+	}
+
+	*state = tempState;
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvSetDispatcherState(GVdispatcherstateptr state)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	/* NOTE: only set once per thread in concept 0, so no collisions */
+	if (gvPutThreadState(DISPATCHER_STATE_KEY, state) == -1)
+	{
+	    THROW(e0, "gvSetThreadState");
 	}
     }
     CATCH (e0)

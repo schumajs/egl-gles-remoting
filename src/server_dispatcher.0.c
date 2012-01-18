@@ -34,12 +34,18 @@ static void
 *dispatchLoopThread(void *data)
 {
     GVcmdid             cmdId;
+    GVjanitorstateptr   janitorState;
+    GVdispatchfunc     *jumpTable;
     struct ThreadArg   *threadArg;
     GVtransportptr      transport;
-    GVdispatchfunc     *jumpTable;
 
     TRY
     {
+	if (pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL) != 0)
+	{
+	    THROW(e0, "pthread_setcancelstate");
+	}
+
 	threadArg = (struct ThreadArg *)data;
 
 	transport = threadArg->transport;
@@ -47,17 +53,23 @@ static void
 	
 	free(threadArg);
 
-	if (gvInitThreadStateMap() == -1)
+	if (gvSetDispatcherState(transport) == -1)
 	{
-	    THROW(e0, "gvInitThreadState");
+	    THROW(e0, "gvSetDispatcherState");
 	}
 
-	gvSetCurrentThreadTransport(transport);
+	if ((janitorState = malloc(sizeof(struct GVjanitorstate))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
 
-	gvPutJanitorState(transport->offset, pthread_self(), transport);
+	janitorState->thread    = pthread_self();
+	janitorState->transport = transport;
 
-	printf("PID %i OFFSET %zu THREAD %zu\n",
-	       getpid(), transport->offset, pthread_self());
+	if (gvSetJanitorState(transport->offset, janitorState) == -1)
+	{
+	    THROW(e0, "gvSetDispatcherState");
+	}
 
 	while (1)
 	{
