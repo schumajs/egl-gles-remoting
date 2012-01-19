@@ -17,13 +17,11 @@
 /*! ***************************************************************************
  * \brief
  *
- * \param [out] offset
  * \param [in]  length
  * \return
  */
-int
-gvAlloc(size_t *offset,
-	size_t  length);
+size_t
+gvAlloc(size_t length);
 
 /*! ***************************************************************************
  * \brief

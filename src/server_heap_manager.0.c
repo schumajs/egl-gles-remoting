@@ -18,8 +18,8 @@
 #include <sys/mman.h>
 
 #include "error.h"
-#include "serializer.h"
 #include "server_dispatcher.h"
+#include "server_serializer.h"
 #include "server_heap_manager.h"
 #include "transport.h"
 
@@ -55,46 +55,31 @@ void _gvAlloc()
     GVtransportptr transport = heapMgr->heapMgrTransport;
 
     GVcallid       callId;
-    int            status;
-    size_t         length;
     size_t         offset; 
+    size_t         length;
 
     TRY
     {
-	if (gvCall(transport, NULL, NULL, &callId) == -1)
+	if (gvReceiveData(transport, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e0, "gvCall");
+	    THROW(e0, "gvReceiveDataData");
 	}
 
-	if (gvGetData(transport, &length, sizeof(size_t)) == -1)
+	if (gvReceiveData(transport, &length, sizeof(size_t)) == -1)
 	{
-	    THROW(e0, "gvGetData");
+	    THROW(e0, "gvReceiveData");
 	}
 
-	if (gvEndCall(transport, NULL) == -1) {
-	    THROW(e0, "gvEndCall");
-	}
+	offset = gvAlloc(length);
 
-	status = gvAlloc(&offset, length);
-
-	if (gvReturn(transport, NULL, &callId) == -1)
+	if (gvStartSending(transport, NULL, callId) == -1)
 	{
 	    THROW(e0, "gvReturn");
 	}
 
-	if (gvPutData(transport, &status, sizeof(int)) == -1)
+	if (gvSendData(transport, &offset, sizeof(size_t)) == -1)
 	{
 	    THROW(e0, "gvPutData");
-	}
-
-	if (gvPutData(transport, &offset, sizeof(size_t)) == -1)
-	{
-	    THROW(e0, "gvPutData");
-	}
-
-	if (gvEndReturn(transport, NULL) == -1)
-	{
-	    THROW(e0, "gvReturn");
 	}
     }
     CATCH (e0)
@@ -114,33 +99,26 @@ void _gvFree()
 
     TRY
     {
-	if (gvCall(transport, NULL, NULL, &callId) == -1)
+	if (gvReceiveData(transport, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e0, "gvCall");
+	    THROW(e0, "gvReceiveDataData");
 	}
 
-	if (gvGetData(transport, &offset, sizeof(size_t)) == -1)
+	if (gvReceiveData(transport, &offset, sizeof(size_t)) == -1)
 	{
 	    THROW(e0, "gvGetData");
 	}
 
-	if (gvEndCall(transport, NULL) == -1) {
-	    THROW(e0, "gvEndCall");
-	}
+	status = gvFree(offset);
 
-	if (gvReturn(transport, NULL, &callId) == -1)
+	if (gvStartSending(transport, NULL, callId) == -1)
 	{
 	    THROW(e0, "gvReturn");
 	}
 
-	if (gvPutData(transport, &status, sizeof(int)) == -1)
+	if (gvSendData(transport, &status, sizeof(int)) == -1)
 	{
 	    THROW(e0, "gvPutData");
-	}
-
-	if (gvEndReturn(transport, NULL) == -1)
-	{
-	    THROW(e0, "gvReturn");
 	}
     }
     CATCH (e0)
@@ -371,10 +349,11 @@ gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
     return -1;
 }
 
-int
-gvAlloc(size_t *offset, size_t length)
+size_t
+gvAlloc(size_t length)
 {
-    void *addr;
+    void   *addr;
+    size_t  offset;
 
     TRY
     {
@@ -384,14 +363,14 @@ gvAlloc(size_t *offset, size_t length)
 	    THROW(e0, "mspace_memalign");
 	}
 
-	*offset = addr - heapMgr->vmShmAddr;
+	offset = addr - heapMgr->vmShmAddr;
     }
     CATCH (e0)
     {
-	return -1;
+	return 0;
     }
 
-    return 0;
+    return offset;
 }
 
 int

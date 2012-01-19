@@ -11,10 +11,10 @@
 
 #include <stdlib.h>
 
+#include "client_serializer.h"
 #include "error.h"
 #include "heap_manager.h"
 #include "lock.h"
-#include "serializer.h"
 #include "transport.h"
 
 extern char           **environ;
@@ -67,45 +67,40 @@ initHeapMgrClient()
 	}						\
     } while (0)
 
-int
-gvAlloc(size_t *offset, size_t length)
+size_t
+gvAlloc(size_t length)
 {
-    GVcmdid  cmdId = GV_CMDID_HMGR_ALLOC;
     GVcallid callId;
-    int      status;
+    size_t   offset;
 
     initIfNotDoneAlready();
 
-    gvCall(transport, callLock, &cmdId, &callId);
-    gvPutData(transport, &length, sizeof(size_t));
-    gvEndCall(transport, callLock);
+    callId = gvStartSending(transport, callLock, GV_CMDID_HMGR_ALLOC);
+    gvSendData(transport, &length, sizeof(size_t));
+    gvStopSending(transport, callLock);
 
-    gvReturn(transport, returnLock, &callId);
-    gvGetData(transport, &status, sizeof(int));
-    gvGetData(transport, offset, sizeof(size_t));
-    gvEndReturn(transport, returnLock);
+    gvStartReceiving(transport, returnLock, callId);
+    gvReceiveData(transport, &offset, sizeof(size_t));
+    gvStopReceiving(transport, returnLock);
 
-    return status;
+    return offset;
 }
 
 int
 gvFree(size_t offset)
 {
-    GVcmdid  cmdId = GV_CMDID_HMGR_FREE;
     GVcallid callId;
     int      status;
 
     initIfNotDoneAlready();
 
-    gvCall(transport, callLock, &cmdId, &callId);
-    gvPutData(transport, &offset, sizeof(size_t));
-    gvEndCall(transport, callLock);
+    callId = gvStartSending(transport, callLock, GV_CMDID_HMGR_FREE);
+    gvSendData(transport, &offset, sizeof(size_t));
+    gvStopSending(transport, callLock);
 
-    printf("%i %i\n", cmdId, callId);
-
-    gvReturn(transport, returnLock, &callId);
-    gvGetData(transport, &status, sizeof(int));
-    gvEndReturn(transport, returnLock);
+    gvStartReceiving(transport, returnLock, callId);
+    gvReceiveData(transport, &status, sizeof(int));
+    gvStopReceiving(transport, returnLock);
 
     return status;
 }

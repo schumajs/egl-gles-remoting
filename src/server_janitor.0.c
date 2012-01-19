@@ -14,9 +14,9 @@
 
 #include "error.h"
 #include "process_state_map.h"
-#include "serializer.h"
 #include "server_dispatcher.h"
 #include "server_janitor.h"
+#include "server_serializer.h"
 #include "server_state_tracker.0.h"
 #include "transport.h"
 
@@ -53,40 +53,32 @@ void _gvBonjour()
 
     TRY
     {
-	if (gvCall(transport, NULL, NULL, &callId) == -1)
+	if (gvReceiveData(transport, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e0, "gvCall");
+	    THROW(e0, "gvReceiveData");
 	}
 
-	if (gvGetData(transport, &offset, sizeof(size_t)) == -1)
+	if (gvReceiveData(transport, &offset, sizeof(size_t)) == -1)
 	{
-	    THROW(e0, "gvGetData");
+	    THROW(e0, "gvReceiveData");
 	}
 
-	if (gvGetData(transport, &length, sizeof(size_t)) == -1)
+	if (gvReceiveData(transport, &length, sizeof(size_t)) == -1)
 	{
-	    THROW(e0, "gvGetData");
+	    THROW(e0, "gvReceiveData");
 	}
 
-	if (gvEndCall(transport, NULL) == -1) {
-	    THROW(e0, "gvEndCall");
-	}
 
 	status = gvBonjour(offset, length);
 
-	if (gvReturn(transport, NULL, &callId) == -1)
+	if (gvStartSending(transport, NULL, callId) == -1)
 	{
-	    THROW(e0, "gvReturn");
+	    THROW(e0, "gvStartSending");
 	}
 
-	if (gvPutData(transport, &status, sizeof(int)) == -1)
+	if (gvSendData(transport, &status, sizeof(int)) == -1)
 	{
-	    THROW(e0, "gvPutData");
-	}
-
-	if (gvEndReturn(transport, NULL) == -1)
-	{
-	    THROW(e0, "gvReturn");
+	    THROW(e0, "gvSendData");
 	}
     }
     CATCH (e0)
@@ -106,35 +98,26 @@ void _gvAuRevoir()
 
     TRY
     {
-	if (gvCall(transport, NULL, NULL, &callId) == -1)
+	if (gvReceiveData(transport, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e0, "gvCall");
+	    THROW(e0, "gvReceiveData");
 	}
 
-	if (gvGetData(transport, &offset, sizeof(size_t)) == -1)
+	if (gvReceiveData(transport, &offset, sizeof(size_t)) == -1)
 	{
-	    THROW(e0, "gvGetData");
-	}
-
-	if (gvEndCall(transport, NULL) == -1) {
-	    THROW(e0, "gvEndCall");
+	    THROW(e0, "gvReceiveData");
 	}
 
 	status = gvAuRevoir(offset);
 
-	if (gvReturn(transport, NULL, &callId) == -1)
+	if (gvStartSending(transport, NULL, callId) == -1)
 	{
 	    THROW(e0, "gvReturn");
 	}
 
-	if (gvPutData(transport, &status, sizeof(int)) == -1)
+	if (gvSendData(transport, &status, sizeof(int)) == -1)
 	{
-	    THROW(e0, "gvPutData");
-	}
-
-	if (gvEndReturn(transport, NULL) == -1)
-	{
-	    THROW(e0, "gvReturn");
+	    THROW(e0, "gvSendData");
 	}
     }
     CATCH (e0)

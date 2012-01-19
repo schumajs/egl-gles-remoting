@@ -16,14 +16,14 @@ int main()
 	size_t offset1;
 	size_t length1 = 3 * 4096;
 
-	if (gvAlloc(&offset0, length0) == -1)
+	if ((offset0 = gvAlloc(length0)) == -1)
 	{
 	    THROW(e0, "gvAlloc");
 	}
 
 	printf("1. CLIENT -- OFFSET %zu LENGTH %zu\n", offset0, length0);
 
-	if (gvAlloc(&offset1, length1) == -1)
+	if ((offset1 = gvAlloc(length1)) == 0)
 	{
 	    THROW(e0, "gvAlloc");
 	}

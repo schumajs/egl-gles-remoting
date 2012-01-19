@@ -16,8 +16,8 @@
 #include "error.h"
 #include "process_state_map.h"
 #include "sleep.h"
-#include "serializer.h"
 #include "server_dispatcher.h"
+#include "server_serializer.h"
 #include "server_state_tracker.0.h"
 #include "thread_state_map.h"
 
@@ -73,9 +73,9 @@ static void
 
 	while (1)
 	{
-	    if (gvRead(transport->callBuffer, &cmdId, sizeof(GVcmdid)) == -1)
+	    if ((cmdId = gvStartReceiving(transport, NULL)) == -1)
 	    {
-		THROW(e0, "gvRead");
+		THROW(e0, "gvStartReceiving");
 	    }
 
 	    jumpTable[cmdId]();

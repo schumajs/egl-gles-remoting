@@ -170,7 +170,7 @@ static int systemPageSize = 4096;
     do {						\
         GVlockptr tempLock;				\
 							\
-	if (gvCreateLock(&tempLock) == -1)		\
+	if ((tempLock = gvCreateLock()) == NULL)	\
 	{						\
 	    THROW(e0, "gvCreateLock");			\
 	}						\

@@ -20,11 +20,10 @@ typedef GVlock *GVlockptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newLock
  * \return
  */
-int
-gvCreateLock(GVlockptr *newLock);
+GVlockptr
+gvCreateLock(void);
 
 /*! ***************************************************************************
  * \brief 

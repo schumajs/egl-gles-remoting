@@ -25,12 +25,10 @@ gvDelProcessState(unsigned long int key);
  * \brief
  *
  * \param  [in]  key
- * \param  [out] value
  * \return
  */
-int
-gvGetProcessState(unsigned long int   key,
-		  void              **value);
+void
+*gvGetProcessState(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief

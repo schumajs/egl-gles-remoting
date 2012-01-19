@@ -67,9 +67,8 @@ gvDelProcessState(unsigned long int key)
     return 0;
 }
 
-int
-gvGetProcessState(unsigned long int   key,
-		  void              **value)
+void
+*gvGetProcessState(unsigned long int key)
 {
     struct Item *item = NULL;
     
@@ -88,8 +87,6 @@ gvGetProcessState(unsigned long int   key,
 	    THROW(e0, "no such item");
 	}
 
-	*value = item->value;
-
 	if (pthread_rwlock_unlock(&hashtableLock) != 0)
 	{
 	    THROW(e0, "pthread_rwlock_unlock");
@@ -97,10 +94,10 @@ gvGetProcessState(unsigned long int   key,
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
     
-    return 0;
+    return item->value;
 }
 
 int

@@ -10,22 +10,22 @@
  */
 
 #include "error.h"
-#include "serializer.h"
+#include "server_serializer.h"
 #include "sleep.h"
 
 /* ***************************************************************************
  * Server serializer implementation
  */
 
-int
-gvCall(GVtransportptr   transport,
-       GVlockptr        lock,
-       GVcmdid          *cmdId,
-       GVcallid         *callId)
+GVcmdid
+gvStartReceiving(GVtransportptr transport,
+		 GVlockptr      lock)
 {
+    GVcmdid  cmdId;
+
     TRY
     {
-	if (gvRead(transport->callBuffer, callId, sizeof(GVcallid)) == -1)
+	if (gvRead(transport->callBuffer, &cmdId, sizeof(GVcmdid)) == -1)
 	{
 	    THROW(e0, "gvRead");
 	}
@@ -35,24 +35,25 @@ gvCall(GVtransportptr   transport,
 	return -1;
     }
     
-    return 0;
+    return cmdId;
 }
 
 int
-gvEndCall(GVtransportptr transport,
-	  GVlockptr      lock)
+gvStopReceiving(GVtransportptr transport,
+		GVlockptr      lock)
 {
     return 0;
 }
 
 int
-gvReturn(GVtransportptr  transport, 
-	 GVlockptr       lock,
-	 GVcallid       *callId)
+gvStartSending(GVtransportptr transport, 
+	       GVlockptr      lock,
+	       GVcallid       callId)
 {
+    
     TRY 
     {
-	if (gvWrite(transport->returnBuffer, callId, sizeof(GVcallid)) == -1)
+	if (gvWrite(transport->returnBuffer, &callId, sizeof(GVcallid)) == -1)
 	{
 	    THROW(e0, "gvWrite");
 	}
@@ -66,20 +67,20 @@ gvReturn(GVtransportptr  transport,
 }
 
 int
-gvEndReturn(GVtransportptr transport,
-	    GVlockptr      lock)
+gvStopSending(GVtransportptr transport,
+	      GVlockptr      lock)
 {
     return 0;
 }
 
 int
-gvGetData(GVtransportptr  transport,
-	  void           *data,
-	  size_t          length)
+gvReceiveData(GVtransportptr  transport,
+	      void           *toAddr,
+	      size_t          length)
 {
     TRY
     {
-	if (gvRead(transport->callBuffer, data, length) == -1)
+	if (gvRead(transport->callBuffer, toAddr, length) == -1)
 	{
 	    THROW(e0, "gvRead");
 	}
@@ -93,13 +94,13 @@ gvGetData(GVtransportptr  transport,
 }
 
 int
-gvPutData(GVtransportptr  transport,
-          const void     *data,
-	  size_t          length)
+gvSendData(GVtransportptr  transport,
+	   const void     *fromAddr,
+	   size_t          length)
 {
     TRY
     {
-	if (gvWrite(transport->returnBuffer, data, length) == -1)
+	if (gvWrite(transport->returnBuffer, fromAddr, length) == -1)
 	{
 	    THROW(e0, "gvWrite");
 	}

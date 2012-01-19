@@ -9,8 +9,8 @@
  * \details
  */
 
+#include "client_serializer.h"
 #include "error.h"
-#include "serializer.h"
 #include "sleep.h"
 
 /* ***************************************************************************
@@ -20,12 +20,13 @@
 #define getCantorPair(k1, k2) \
     0.5 * ((k1 + k2) * (k1 + k2 + 1) + k2)
 
-int
-gvCall(GVtransportptr  transport,
-       GVlockptr       lock,
-       GVcmdid        *cmdId,
-       GVcallid       *callId)
+GVcallid
+gvStartSending(GVtransportptr  transport,
+	       GVlockptr       lock,
+	       GVcmdid         cmdId)
 {
+    GVcallid callId;
+
     TRY
     {
 	if (lock != NULL)
@@ -43,15 +44,15 @@ gvCall(GVtransportptr  transport,
 	    pid_t     pid = getpid();
 	    pthread_t tid = pthread_self();
 
-	    *callId = getCantorPair(pid, tid);
+	    callId = getCantorPair(pid, tid);
 	}
 
-	if (gvWrite(transport->callBuffer, cmdId, sizeof(GVcmdid)) == -1)
+	if (gvWrite(transport->callBuffer, &cmdId, sizeof(GVcmdid)) == -1)
 	{
 	    THROW(e1, "gvWrite");
 	}
 
-	if (gvWrite(transport->callBuffer, callId, sizeof(GVcallid)) == -1)
+	if (gvWrite(transport->callBuffer, &callId, sizeof(GVcallid)) == -1)
 	{
 	    THROW(e1, "gvWrite");
 	}
@@ -73,12 +74,12 @@ gvCall(GVtransportptr  transport,
 	return -1;
     }
     
-    return 0;
+    return callId;
 }
 
 int
-gvEndCall(GVtransportptr transport,
-	  GVlockptr      lock)
+gvStopSending(GVtransportptr transport,
+	      GVlockptr      lock)
 {
     TRY
     {
@@ -99,12 +100,12 @@ gvEndCall(GVtransportptr transport,
 }
 
 int
-gvReturn(GVtransportptr  transport, 
-	 GVlockptr       lock,
-	 GVcallid       *callId)
+gvStartReceiving(GVtransportptr transport, 
+		 GVlockptr      lock,
+		 GVcallid       callId)
 {
-    void           *dataPtr;
-    size_t          dataLength;
+    void   *dataPtr;
+    size_t  dataLength;
 
     TRY
     {
@@ -130,7 +131,7 @@ gvReturn(GVtransportptr  transport,
 		    THROW(e1, "gvDataPtr");
 		}
 	    
-		if (*((GVcallid *)dataPtr) == *callId)
+		if (*((GVcallid *)dataPtr) == callId)
 		{
 		    if (gvTake(transport->returnBuffer, sizeof(GVcallid)) == -1)
 		    {
@@ -173,8 +174,8 @@ gvReturn(GVtransportptr  transport,
 }
 
 int
-gvEndReturn(GVtransportptr transport,
-	    GVlockptr      lock)
+gvStopReceiving(GVtransportptr transport,
+		GVlockptr      lock)
 {
     TRY
     {
@@ -195,13 +196,13 @@ gvEndReturn(GVtransportptr transport,
 }
 
 int
-gvGetData(GVtransportptr  transport,
-	  void           *data,
-	  size_t          length)
+gvReceiveData(GVtransportptr  transport,
+	      void           *toAddr,
+	      size_t          length)
 {
     TRY
     {
-	if (gvRead(transport->returnBuffer, data, length) == -1)
+	if (gvRead(transport->returnBuffer, toAddr, length) == -1)
 	{
 	    THROW(e0, "gvRead");
 	}
@@ -215,13 +216,13 @@ gvGetData(GVtransportptr  transport,
 }
 
 int
-gvPutData(GVtransportptr  transport,
-          const void     *data,
-	  size_t          length)
+gvSendData(GVtransportptr  transport,
+	   const void     *fromAddr,
+	   size_t          length)
 {
     TRY
     {
-	if (gvWrite(transport->callBuffer, data, length) == -1)
+	if (gvWrite(transport->callBuffer, fromAddr, length) == -1)
 	{
 	    THROW(e0, "gvWrite");
 	}

@@ -59,7 +59,7 @@ gvGetJanitorState(size_t             offset,
 
     TRY
     {
-	if (gvGetProcessState(offset, &tempState) == -1)
+	if ((tempState = gvGetProcessState(offset)) == NULL)
 	{
 	    THROW(e0, "gvGetProcessState");
 	}

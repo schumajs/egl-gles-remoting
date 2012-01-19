@@ -11,10 +11,10 @@
 
 #include <stdlib.h>
 
+#include "client_serializer.h"
 #include "error.h"
 #include "janitor.h"
 #include "lock.h"
-#include "serializer.h"
 #include "transport.h"
 
 extern char           **environ;
@@ -70,20 +70,19 @@ initJanitorClient()
 int
 gvBonjour(size_t offset, size_t length)
 {
-    GVcmdid   cmdId = GV_CMDID_JANITOR_BONJOUR;
     GVcallid  callId;
     int       status;
 
     initIfNotDoneAlready();
 
-    gvCall(transport, callLock, &cmdId, &callId);
-    gvPutData(transport, &offset, sizeof(size_t));
-    gvPutData(transport, &length, sizeof(size_t));
-    gvEndCall(transport, callLock);
+    callId = gvStartSending(transport, callLock, GV_CMDID_JANITOR_BONJOUR);
+    gvSendData(transport, &offset, sizeof(size_t));
+    gvSendData(transport, &length, sizeof(size_t));
+    gvStopSending(transport, callLock);
 
-    gvReturn(transport, returnLock, &callId);
-    gvGetData(transport, &status, sizeof(int));
-    gvEndReturn(transport, returnLock);
+    gvStartReceiving(transport, returnLock, callId);
+    gvReceiveData(transport, &status, sizeof(int));
+    gvStopReceiving(transport, returnLock);
 
     return status;
 }
@@ -91,19 +90,18 @@ gvBonjour(size_t offset, size_t length)
 int
 gvAuRevoir(size_t offset)
 {
-    GVcmdid  cmdId = GV_CMDID_JANITOR_AUREVOIR;
     GVcallid callId;
     int      status;
 
     initIfNotDoneAlready();
 
-    gvCall(transport, callLock, &cmdId, &callId);
-    gvPutData(transport, &offset, sizeof(size_t));
-    gvEndCall(transport, callLock);
+    callId = gvStartSending(transport, callLock, GV_CMDID_JANITOR_AUREVOIR);
+    gvSendData(transport, &offset, sizeof(size_t));
+    gvStopSending(transport, callLock);
 
-    gvReturn(transport, returnLock, &callId);
-    gvGetData(transport, &status, sizeof(int));
-    gvEndReturn(transport, returnLock);
+    gvStartReceiving(transport, returnLock, callId);
+    gvReceiveData(transport, &status, sizeof(int));
+    gvStopReceiving(transport, returnLock);
 
     return status;
 }
