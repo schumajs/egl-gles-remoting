@@ -39,12 +39,10 @@ gvDelJanitorState(size_t offset);
  * \brief
  *
  * \param  [in] offset
- * \param  [out] state
  * \return
  */
-int
-gvGetJanitorState(size_t             offset,
-		  GVjanitorstateptr *state);
+GVjanitorstateptr
+gvGetJanitorState(size_t offset);
 
 /*! ***************************************************************************
  * \brief
@@ -72,8 +70,8 @@ gvDelDispatcherState(GVdispatcherstateptr state);
  * \param  [out] state
  * \return
  */
-int
-gvGetDispatcherState(GVdispatcherstateptr *state);
+GVdispatcherstateptr
+gvGetDispatcherState(void);
 
 /*! ***************************************************************************
  * \brief

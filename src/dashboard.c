@@ -60,12 +60,12 @@ int main()
 {
     TRY
     {
-	if (gvStartHeapMgr(&heapMgr, 1UL << 20) == -1)
+	if ((heapMgr = gvStartHeapMgr(1UL << 20)) == NULL)
 	{
 	    THROW(e0, "gvStartHeapMgr");
 	}
 
-	if (gvStartJanitor(&janitor, heapMgr->vmShm) == -1)
+	if ((janitor = gvStartJanitor(heapMgr->vmShm)) == NULL)
 	{
 	    THROW(e0, "gvStartJanitor");
 	}

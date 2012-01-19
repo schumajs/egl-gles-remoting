@@ -36,39 +36,33 @@ typedef struct GVtransport *GVtransportptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newTransport
- * \param  [in]  shm
- * \param  [in]  offset
- * \param  [in]  length
+ * \param  [in] shm
+ * \param  [in] offset
+ * \param  [in] length
  * \return 
  */
-int
-gvCreateTransport(GVtransportptr *newTransport,
-		  GVshmptr        shm,
-		  size_t          offset,
-		  size_t          length);
+GVtransportptr
+gvCreateTransport(GVshmptr shm,
+		  size_t   offset,
+		  size_t   length);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in]  buffer
- * \param  [out] spacePtr
- * \return 
+ * \param  [in] buffer
+  * \return 
  */
-int
-gvSpacePtr(GVbufferptr   buffer,
-	   void        **spacePtr);
+void
+*gvSpacePtr(GVbufferptr buffer);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in]  buffer
- * \param  [out] length
+ * \param  [in] buffer
  * \return 
  */
-int
-gvSpaceLength(GVbufferptr  buffer,
-	      size_t      *length);
+size_t
+gvSpaceLength(GVbufferptr buffer);
 
 /*! ***************************************************************************
  * \brief 
@@ -97,24 +91,20 @@ gvRead(GVbufferptr  buffer,
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in]  buffer
- * \param  [out] dataPtr
+ * \param  [in] buffer
  * \return 
  */
-int
-gvDataPtr(GVbufferptr   buffer,
-	  void        **dataPtr);
+void
+*gvDataPtr(GVbufferptr buffer);
 
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [in]  buffer
- * \param  [out] length
+ * \param  [in] buffer
  * \return 
  */
-int
-gvDataLength(GVbufferptr  buffer,
-	     size_t      *length);
+size_t
+gvDataLength(GVbufferptr buffer);
 
 /*! ***************************************************************************
  * \brief 

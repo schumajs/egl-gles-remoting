@@ -42,7 +42,9 @@ initHeapMgrClient()
 	heapMgrShm->id   = heapMgrShmFd;
 	heapMgrShm->size = heapMgrShmSize;
 
-	if (gvCreateTransport(&transport, heapMgrShm, 0, heapMgrShmSize) == -1)
+	if ((transport = gvCreateTransport(heapMgrShm,
+					   0,
+					   heapMgrShmSize)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}

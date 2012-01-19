@@ -28,13 +28,11 @@ typedef struct GVheapmgr *GVheapmgrptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newHeapMgr
- * \param  [in]  heapSize
+ * \param  [in] heapSize
  * \return 
  */
-int
-gvStartHeapMgr(GVheapmgrptr *newHeapMgr,
-	       size_t        heapSize);
+GVheapmgrptr
+gvStartHeapMgr(size_t heapSize);
 
 /*! ***************************************************************************
  * \brief 

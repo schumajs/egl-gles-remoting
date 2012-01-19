@@ -16,12 +16,12 @@
 #include "error.h"
 #include "shared_memory.h"
 
-int
-gvCreateShm(GVshmptr *newShm, size_t shmSize)
+GVshmptr
+gvCreateShm(size_t shmSize)
 {
-    int  fd;
-    char fileName[] = "/dev/shm/gvshm.XXXXXX";
-	
+    int      fd;
+    char     fileName[] = "/dev/shm/gvshm.XXXXXX";
+    GVshmptr newShm;	
     TRY
     {
 	if ((fd = mkstemp(fileName)) == -1)
@@ -39,20 +39,20 @@ gvCreateShm(GVshmptr *newShm, size_t shmSize)
 	    THROW(e0, "ftruncate");
 	}
 
-	if ((*newShm = malloc(sizeof(struct GVshm))) == NULL)
+	if ((newShm = malloc(sizeof(struct GVshm))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	(*newShm)->id   = fd;
-	(*newShm)->size = shmSize;
+	newShm->id   = fd;
+	newShm->size = shmSize;
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
 
-    return 0;
+    return newShm;
 }
 
 int

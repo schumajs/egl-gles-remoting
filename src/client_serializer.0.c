@@ -119,17 +119,11 @@ gvStartReceiving(GVtransportptr transport,
 		}
 	    }
 
-	    if (gvDataLength(transport->returnBuffer, &dataLength) == -1)
-            {
-		THROW(e1, "gvDataLength");
-	    }
+	    dataLength = gvDataLength(transport->returnBuffer);
 
 	    if (dataLength >= sizeof(GVcallid))
 	    {
-		if (gvDataPtr(transport->returnBuffer, &dataPtr) == -1)
-		{
-		    THROW(e1, "gvDataPtr");
-		}
+		dataPtr = gvDataPtr(transport->returnBuffer);
 	    
 		if (*((GVcallid *)dataPtr) == callId)
 		{

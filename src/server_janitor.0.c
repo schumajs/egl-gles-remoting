@@ -166,8 +166,8 @@ sigtermHandler()
     exit(3);
 }
 
-int
-gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
+GVjanitorptr
+gvStartJanitor(GVshmptr vmShm)
 {
     TRY
     {
@@ -182,7 +182,7 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 	 * descriptor will be available to child processes.
 	 */
 
-	if (gvCreateShm(&(janitor->public.janitorShm), 3 * 4096) == -1)
+	if ((janitor->public.janitorShm = gvCreateShm(3 * 4096)) == NULL)
 	{
 	    THROW(e0, "gvCreateShm");
 	}
@@ -200,10 +200,10 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 	    }
 
 	    /* Create transport */
-	    if (gvCreateTransport(&(janitor->janitorTransport),
-				  janitor->public.janitorShm,
-				  0,
-				  janitor->public.janitorShm->size) == -1)
+	    if ((janitor->janitorTransport
+		 = gvCreateTransport(janitor->public.janitorShm,
+				     0,
+				     janitor->public.janitorShm->size)) == NULL)
 	    {
 		THROW(e1, "gvCreateTransport");
 	    }
@@ -216,7 +216,7 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 		THROW(e1, "gvDispatchLoop");
 	    }
 
-	    return 0;
+	    return NULL;
 	}
 	else if (janitor->janitorPid > 0)
 	{
@@ -224,9 +224,7 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
 	     * Dashboard process
 	     */
 
-	    *newJanitor = (GVjanitorptr) janitor;
-	
-	    return 1;       
+	    return (GVjanitorptr) janitor;
 	}
 	else if (janitor->janitorPid < 0)
 	{
@@ -235,28 +233,29 @@ gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm)
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
     CATCH (e1)
     {
 	exit(2);
     }
 
-    return -1;
+    return NULL;
 }
 
 int
-gvBonjour(size_t offset, size_t length)
+gvBonjour(size_t offset,
+	  size_t length)
 {
     GVtransportptr  transport;
  
     TRY
     {
 	/* Create transport */
-	if (gvCreateTransport(&transport,
-			      janitor->public.vmShm,
-			      offset,
-			      length) == -1)
+	if ((transport
+	     = gvCreateTransport(janitor->public.vmShm,
+				 offset,
+				 length)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}
@@ -282,7 +281,7 @@ gvAuRevoir(size_t offset)
 
     TRY
     {
-	if (gvGetJanitorState(offset, &janitorState) == -1)
+	if ((janitorState = gvGetJanitorState(offset)) == NULL)
 	{
 	    THROW(e0, "gvGetJanitorState");
 	}

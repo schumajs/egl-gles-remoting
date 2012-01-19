@@ -42,7 +42,9 @@ initJanitorClient()
 	janitorShm->id   = janitorShmFd;
 	janitorShm->size = janitorShmSize;
 
-	if (gvCreateTransport(&transport, janitorShm, 0, janitorShmSize) == -1)
+	if ((transport = gvCreateTransport(janitorShm,
+					   0,
+					   janitorShmSize)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}

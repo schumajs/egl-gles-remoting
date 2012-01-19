@@ -146,10 +146,10 @@ void createHeapMgrResources()
     TRY
     {
 	/* Create transport */
-	if (gvCreateTransport(&(heapMgr->heapMgrTransport),
-			      heapMgr->public.heapMgrShm,
-			      0,
-			      heapMgr->public.heapMgrShm->size) == -1)
+	if ((heapMgr->heapMgrTransport
+	     = gvCreateTransport(heapMgr->public.heapMgrShm,
+				 0,
+				 heapMgr->public.heapMgrShm->size)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}
@@ -270,8 +270,8 @@ sigtermHandler()
     exit(3);
 }
 
-int
-gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
+GVheapmgrptr
+gvStartHeapMgr(size_t heapSize)
 {
     TRY
     {
@@ -284,12 +284,12 @@ gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
 	 * descriptor will be available to child processes.
 	 */
 
-	if (gvCreateShm(&(heapMgr->public.vmShm), heapSize) == -1)
+	if ((heapMgr->public.vmShm = gvCreateShm(heapSize)) == NULL)
 	{
 	    THROW(e0, "gvCreateShm");
 	}
 
-	if (gvCreateShm(&(heapMgr->public.heapMgrShm), 3 * 4096) == -1)
+	if ((heapMgr->public.heapMgrShm = gvCreateShm(3 * 4096)) == NULL)
 	{
 	    THROW(e0, "gvCreateShm");
 	}	
@@ -320,17 +320,11 @@ gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
 		THROW(e1, "gvDispatchLoop");
 	    }
 
-	    return 0;
+	    return NULL;
 	}
 	else if (heapMgr->heapMgrPid > 0)
 	{
-	    /*
-	     * Dashboard process
-	     */
-
-	    *newHeapMgr = (GVheapmgrptr) heapMgr;
-
-	    return 1;
+	    return (GVheapmgrptr) heapMgr;
 	}
 	else if (heapMgr->heapMgrPid < 0)
 	{
@@ -339,14 +333,14 @@ gvStartHeapMgr(GVheapmgrptr *newHeapMgr, size_t heapSize)
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
     CATCH (e1)
     {
 	exit(0);
     }
 
-    return -1;
+    return NULL;
 }
 
 size_t

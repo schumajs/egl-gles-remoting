@@ -26,12 +26,11 @@ typedef struct GVjanitor *GVjanitorptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newJanitor
- * \param  [in]  vmShm
+ * \param  [in] vmShm
  * \return 
  */
-int
-gvStartJanitor(GVjanitorptr *newJanitor, GVshmptr vmShm);
+GVjanitorptr
+gvStartJanitor(GVshmptr vmShm);
 
 /*! ***************************************************************************
  * \brief 

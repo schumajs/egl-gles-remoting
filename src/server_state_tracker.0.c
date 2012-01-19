@@ -51,9 +51,8 @@ gvDelJanitorState(size_t offset)
     return 0;
 }
 
-int
-gvGetJanitorState(size_t             offset,
-		  GVjanitorstateptr *state)
+GVjanitorstateptr
+gvGetJanitorState(size_t offset)
 {
     void *tempState;
 
@@ -63,15 +62,13 @@ gvGetJanitorState(size_t             offset,
 	{
 	    THROW(e0, "gvGetProcessState");
 	}
-
-	*state = (GVjanitorstateptr) tempState;
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
 
-    return 0;
+    return (GVjanitorstateptr) tempState;
 }
 
 int
@@ -116,8 +113,8 @@ gvDelDispatcherState(GVdispatcherstateptr state)
     return 0;
 }
 
-int
-gvGetDispatcherState(GVdispatcherstateptr *state)
+GVdispatcherstateptr
+gvGetDispatcherState()
 {
     void *tempState;
 
@@ -125,19 +122,17 @@ gvGetDispatcherState(GVdispatcherstateptr *state)
 
     TRY
     {
-	if (gvGetThreadState(DISPATCHER_STATE_KEY, &tempState) == -1)
+	if ((tempState = gvGetThreadState(DISPATCHER_STATE_KEY)) == NULL)
 	{
 	    THROW(e0, "gvGetThreadState");
 	}
-
-	*state = tempState;
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
 
-    return 0;
+    return (GVdispatcherstateptr) tempState;
 }
 
 int

@@ -32,13 +32,11 @@ gvDelThreadState(unsigned long key);
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in]  key
- * \param  [out] value
+ * \param  [in] key
  * \return
  */
-int
-gvGetThreadState(unsigned long int   key,
-		 void              **value);
+void
+*gvGetThreadState(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief

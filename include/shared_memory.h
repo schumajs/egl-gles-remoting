@@ -26,13 +26,11 @@ typedef struct GVshm *GVshmptr;
 /*! ***************************************************************************
  * \brief 
  *
- * \param  [out] newShm
- * \param  [in]  shmSize
+ * \param  [in] shmSize
  * \return 
  */
-int
-gvCreateShm(GVshmptr *newShm,
-	    size_t    shmSize);
+GVshmptr
+gvCreateShm(size_t shmSize);
 
 /*! ***************************************************************************
  * \brief 

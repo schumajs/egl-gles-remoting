@@ -194,9 +194,8 @@ static int systemPageSize = 4096;
 /** ***************************************************************************
  */
 
-int
-gvCreateTransport(GVtransportptr *newTransport, 
-		  GVshmptr shm, size_t offset, size_t length)
+GVtransportptr
+gvCreateTransport(GVshmptr shm, size_t offset, size_t length)
 {
    
     void             *base;
@@ -313,45 +312,41 @@ gvCreateTransport(GVtransportptr *newTransport,
 	    initLocks(callBuffer, returnBuffer);
 	}
 	
-	*newTransport = (GVtransportptr) transport;
+ 	transport->public.shm    = shm;
+	transport->public.offset = offset;
+	transport->public.length = length;
 
-	(*newTransport)->shm    = shm;
-	(*newTransport)->offset = offset;
-	(*newTransport)->length = length;
+	transport->public.callBuffer   = (GVbufferptr) callBuffer;
+	transport->public.returnBuffer = (GVbufferptr) returnBuffer;
 
-	(*newTransport)->callBuffer   = (GVbufferptr) callBuffer;
-	(*newTransport)->returnBuffer = (GVbufferptr) returnBuffer;
+	transport->public.callBuffer->clientLock  = &callBuffer->inShmPart->clientLock;
+	transport->public.callBuffer->serverLock  = &callBuffer->inShmPart->serverLock;
 
-	(*newTransport)->callBuffer->clientLock  = &callBuffer->inShmPart->clientLock;
-	(*newTransport)->callBuffer->serverLock  = &callBuffer->inShmPart->serverLock;
-
-	(*newTransport)->returnBuffer->clientLock = &returnBuffer->inShmPart->clientLock;
-	(*newTransport)->returnBuffer->serverLock = &returnBuffer->inShmPart->serverLock;
+	transport->public.returnBuffer->clientLock = &returnBuffer->inShmPart->clientLock;
+	transport->public.returnBuffer->serverLock = &returnBuffer->inShmPart->serverLock;
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
 
-    return 0;
+    return (GVtransportptr) transport;
 }
 
-int
-gvDataPtr(GVbufferptr buffer, void **dataPtr)
+void
+*gvDataPtr(GVbufferptr buffer)
 {
     size_t offset;
 
     offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShmPart->head);
-    *dataPtr = castBuffer(buffer)->inAppPart.tail + offset;
 
-    return 0;
+    return castBuffer(buffer)->inAppPart.tail + offset;
 }
 
-int
-gvDataLength(GVbufferptr buffer, size_t *length)
+size_t
+gvDataLength(GVbufferptr buffer)
 {
-    *length = vrb_data_len(&castBuffer(buffer)->inShmPart->head);
-    return 0;
+    return vrb_data_len(&castBuffer(buffer)->inShmPart->head);
 }
 
 int
@@ -425,22 +420,20 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
     return 0;
 }
 
-int
-gvSpacePtr(GVbufferptr buffer, void **spacePtr)
+void
+*gvSpacePtr(GVbufferptr buffer)
 {
     size_t offset;
 
     offset = (size_t) vrb_space_ptr(&castBuffer(buffer)->inShmPart->head);
-    *spacePtr = castBuffer(buffer)->inAppPart.tail + offset;
 
-    return 0;
+    return  castBuffer(buffer)->inAppPart.tail + offset;
 }
 
-int
-gvSpaceLength(GVbufferptr buffer, size_t *length)
+size_t
+gvSpaceLength(GVbufferptr buffer)
 {
-    *length = vrb_space_len(&castBuffer(buffer)->inShmPart->head);
-    return 0;
+    return vrb_space_len(&castBuffer(buffer)->inShmPart->head);
 }
 
 int

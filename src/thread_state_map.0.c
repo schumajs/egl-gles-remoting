@@ -26,15 +26,15 @@ struct Item {
     UT_hash_handle     hh;
 };
 
+static pthread_mutex_t initTerminateLock = PTHREAD_MUTEX_INITIALIZER;
+static int             threadRefCounter  =  0;
+static pthread_key_t   threadSpecificKey = -1;
+
 #define getThreadSpecificData() \
     pthread_getspecific(threadSpecificKey)
 
 #define setThreadSpecificData(data) \
     pthread_setspecific(threadSpecificKey, data)
-
-pthread_mutex_t      initTerminateLock = PTHREAD_MUTEX_INITIALIZER;
-static int           threadRefCounter     =  0;
-static pthread_key_t threadSpecificKey = -1;
 
 static void
 threadSpecificDataDestructor(void *threadSpecificData) {
@@ -115,9 +115,8 @@ gvDelThreadState(unsigned long key)
     return 0;
 }
 
-int
-gvGetThreadState(unsigned long int   key,
-		 void              **value)
+void
+*gvGetThreadState(unsigned long int key)
 {
     struct Item *item = NULL;
     struct Item *hashtable;
@@ -135,15 +134,13 @@ gvGetThreadState(unsigned long int   key,
 	{
 	    THROW(e0, "no such item");
 	}
-
-	*value = item->value;   
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
 
-    return 0;
+    return item->value;
 }
 
 int
