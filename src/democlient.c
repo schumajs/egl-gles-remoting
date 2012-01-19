@@ -21,12 +21,12 @@ int main()
 	    THROW(e0, "gvAlloc");
 	}
 
+	printf("1. CLIENT -- OFFSET %zu LENGTH %zu\n", offset0, length0);
+
 	if (gvAlloc(&offset1, length1) == -1)
 	{
 	    THROW(e0, "gvAlloc");
 	}
-
-	printf("1. CLIENT -- OFFSET %zu LENGTH %zu\n", offset0, length0);
 
 	printf("2. CLIENT -- OFFSET %zu LENGTH %zu\n", offset1, length1);
 
@@ -78,7 +78,7 @@ int main()
 	    printf("STATUS %i\n", status);
 	}
 
-	if ((status = gvFree(offset0)) == -1)
+	if ((status = gvFree(offset1)) == -1)
 	{
 	    THROW(e0, "gvFree");
 	}

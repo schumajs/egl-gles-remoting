@@ -284,7 +284,7 @@ gvCreateTransport(GVtransportptr *newTransport,
 	callBuffer->inShmPart = &transport->inShmPart->callBuffer;
 	callBuffer->inAppPart.tail = base + MMAP_CALL_BUFFER_TAIL_1ST_OFFSET;
 
-	returnBuffer->inShmPart = &transport->inShmPart->callBuffer;
+	returnBuffer->inShmPart = &transport->inShmPart->returnBuffer;
 	returnBuffer->inAppPart.tail = base + MMAP_RETURN_BUFFER_TAIL_1ST_OFFSET(length);
 
 	if (transport->inShmPart->state == STATE_UNINITIALIZED)
@@ -430,7 +430,7 @@ gvSpacePtr(GVbufferptr buffer, void **spacePtr)
 {
     size_t offset;
 
-    offset = (size_t) vrb_data_ptr(&castBuffer(buffer)->inShmPart->head);
+    offset = (size_t) vrb_space_ptr(&castBuffer(buffer)->inShmPart->head);
     *spacePtr = castBuffer(buffer)->inAppPart.tail + offset;
 
     return 0;

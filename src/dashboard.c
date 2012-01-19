@@ -74,7 +74,7 @@ int main()
 
 	demoClient();
 
-	gvSleep(25, 0);
+	gvSleep(20, 0);
 
 	if (gvStopJanitor(janitor) == -1)
 	{

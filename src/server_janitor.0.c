@@ -318,6 +318,8 @@ gvAuRevoir(size_t offset)
 	{
 	    THROW(e0, "gvDelJanitorState");
 	}
+
+	/* free(janitorState); */
     }
     CATCH (e0)
     {

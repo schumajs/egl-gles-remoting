@@ -36,15 +36,8 @@ static int threadStateMapInitiated = 0;
 int
 gvDelJanitorState(size_t offset)
 {
-    void *tempState; 
-
     TRY
     {
-	if (gvGetProcessState(offset, &tempState) == -1)
-	{
-	    THROW(e0, "gvGetProcessState");
-	}
-
 	if (gvDelProcessState(offset) == -1)
 	{
 	    THROW(e0, "gvDelProcessState");

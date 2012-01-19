@@ -128,8 +128,6 @@ void _gvFree()
 	    THROW(e0, "gvEndCall");
 	}
 
-	status = gvFree(offset);
-
 	if (gvReturn(transport, NULL, &callId) == -1)
 	{
 	    THROW(e0, "gvReturn");

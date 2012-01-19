@@ -70,7 +70,7 @@ initHeapMgrClient()
 int
 gvAlloc(size_t *offset, size_t length)
 {
-    GVcallid cmdId = GV_CMDID_HMGR_ALLOC;
+    GVcmdid  cmdId = GV_CMDID_HMGR_ALLOC;
     GVcallid callId;
     int      status;
 
@@ -85,15 +85,13 @@ gvAlloc(size_t *offset, size_t length)
     gvGetData(transport, offset, sizeof(size_t));
     gvEndReturn(transport, returnLock);
 
-    puts("CLIENT ALLOC C");
-
     return status;
 }
 
 int
 gvFree(size_t offset)
 {
-    GVcallid cmdId = GV_CMDID_HMGR_FREE;
+    GVcmdid  cmdId = GV_CMDID_HMGR_FREE;
     GVcallid callId;
     int      status;
 

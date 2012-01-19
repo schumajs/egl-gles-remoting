@@ -9,6 +9,9 @@
  * \details
  */
 
+#ifndef ERROR_H_
+#define ERROR_H_
+
 #include <stdio.h>
 
 /* ***************************************************************************
@@ -18,3 +21,5 @@
 #define TRY
 #define THROW(to, msg) perror(msg); goto to
 #define CATCH(to) while (0) to:
+
+#endif /* ERROR_H_ */
