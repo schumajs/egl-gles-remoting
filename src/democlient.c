@@ -1,93 +1,47 @@
+#include <stdlib.h>
+#include <EGL/egl.h>
+
+#include "client_state_tracker.0.h"
 #include "errno.h"
 #include "error.h"
-#include "heap_manager.h"
-#include "janitor.h"
-#include "sleep.h"
 
 int main()
 {
+    void              *display1  = malloc(sizeof(int));
+    void              *context1  = malloc(sizeof(int));
+    GVcontextstateptr  state1    = malloc(sizeof(struct GVcontextstate));
+
+    void              *display2  = malloc(sizeof(int));
+    void              *context2  = malloc(sizeof(int));
+    GVcontextstateptr  state2    = malloc(sizeof(struct GVcontextstate));
+
+    GVcontextstateptr  state3;
+
     TRY
     {
-	int status;
+	state1->markedCurrent   = 0;
+	state1->markedDestroyed = 0;
 
-	size_t offset0;
-	size_t length0 = 3 * 4096;
+	state2->markedCurrent   = 1;
+	state2->markedDestroyed = 1;
 
-	size_t offset1;
-	size_t length1 = 3 * 4096;
+	gvSetEglContextState(display1, context1, state1);
+	gvSetEglContextState(display2, context2, state2);
 
-	if ((offset0 = gvAlloc(length0)) == -1)
-	{
-	    THROW(e0, "gvAlloc");
-	}
+	state1 = gvGetEglContextState(display1, context1);
+	state2 = gvGetEglContextState(display2, context2);
+	    
+	printf("1. %i %i\n", state1->markedCurrent, state1->markedDestroyed);
+	printf("2. %i %i\n", state2->markedCurrent, state2->markedDestroyed);
 
-	printf("1. CLIENT -- OFFSET %zu LENGTH %zu\n", offset0, length0);
+	printf("%p\n", state2);
 
-	if ((offset1 = gvAlloc(length1)) == 0)
-	{
-	    THROW(e0, "gvAlloc");
-	}
+	gvSetEglContextState(NULL, NULL, state2);
+	state3 = gvGetEglContextState(NULL, NULL);
 
-	printf("2. CLIENT -- OFFSET %zu LENGTH %zu\n", offset1, length1);
+	printf("2. %i %i\n", state3->markedCurrent, state3->markedDestroyed);
 
-	if ((status = gvBonjour(offset0, length0)) == -1)
-	{
-	    THROW(e0, "gvBonjour");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	if ((status = gvBonjour(offset1, length1)) == -1)
-	{
-	    THROW(e0, "gvBonjour");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	puts("PAUSE");
-	gvSleep(10, 0);
-
-	if ((status = gvAuRevoir(offset0)) == -1)
-	{
-	    THROW(e0, "gvAuRevoir");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	if ((status = gvAuRevoir(offset1)) == -1)
-	{
-	    THROW(e0, "gvAuRevoir");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	if ((status = gvFree(offset0)) == -1)
-	{
-	    THROW(e0, "gvFree");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	if ((status = gvFree(offset1)) == -1)
-	{
-	    THROW(e0, "gvFree");
-	}
-	else
-	{
-	    printf("STATUS %i\n", status);
-	}
-
-	puts("WELL DONE");
+	printf("%p\n", state3);
     }
     CATCH (e0)
     {

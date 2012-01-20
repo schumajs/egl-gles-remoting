@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    client_dispatcher.0.c
+ * \file    client_state_tracker.0.c
  * \brief
  * 
  * \date    January 9, 2011
@@ -9,179 +9,101 @@
  * \details
  */
 
-#include <uthash.h>
+#include <pthread.h>
 
-#include "client_state_tracker.h"
+#include "client_state_tracker.0.h"
 #include "error.h"
-#include "thread_state.h"
-
-
-struct ThreadState {
-    /* EGL context */
-    struct Context {
-	EGLDisplay display;
-        EGLDisplay context;
-    } context;
-
-    /* EGL context state */
-    int            markedCurrent;
-    int            markedDestroyed;
-
-    /* Context transport */
-    GVtransportptr transport;
-
-    UT_hash_handle hh;
-};
+#include "process_state_map.h"
+#include "thread_state_map.h"
 
 /* ***************************************************************************
- * Thread state hashtable
- */
-
-static ThreadStatePtr   stateHash     = NULL;
-static pthread_rwlock_t stateHashLock = PTHREAD_RWLOCK_INITIALIZER;
-
-static void
-hashDel(ThreadStatePtr state)
-{
-    HASH_DEL(stateHash, state);
-}
-
-static ThreadStatePtr
-hashGet(EGLDisplay display,
-	EGLContext context)
-{
-    struct ThreadState  pattern;
-    struct ThreadState *state;
-
-    memset(&pattern, 0, sizeof(struct ThreadState));
-    pattern.context.display = display;
-    pattern.context.context = context;
-
-    HASH_FIND(hh, stateHash, &pattern.context, sizeof(struct Context), state);
-
-    return state;
-}
-
-void
-hashPut(ThreadStatePtr state) {
-    HASH_ADD(hh, stateHash, context, sizeof(struct Context), state);
-}
-
-/* ****************************************************************************
  * Client state tracker implementation
  */
 
+/* TODO replace cantor pairing: slow, needs bignum */
+#define getCantorPair(k1, k2) \
+    0.5 * ((k1 + k2) * (k1 + k2 + 1) + k2)
+
+#define DISPATCHER_STATE_KEY 0
+
+static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
+static int              threadStateMapInitiated = 0;
+
+#define initIfNotDoneAlready()					\
+    do {							\
+	if (!threadStateMapInitiated)				\
+	{							\
+	    if (gvInitThreadStateMap() == -1) return -1;	\
+	    threadStateMapInitiated = 1;			\
+	}							\
+    } while (0)
+
 int
-gvInitStateTracker()
+gvDelEglContextState(EGLDisplay display,
+		     EGLContext context)
 {
+    size_t tempDisplay = (size_t) display;
+    size_t tempContext = (size_t) context;
+
     TRY
     {
-	if (gvInitThreadState() == -1)
+	if (gvDelProcessState(getCantorPair(tempDisplay,
+					    tempContext)) == -1)
 	{
-	    THROW(e0, "gvInitThreadState");
+	    THROW(e0, "gvDelProcessState");
 	}
     }
     CATCH (e0)
     {
-	return -1;
-    }
-   
-    return 0;
-}
-
-int
-gvTrack(EGLDisplay display,
-	EGLContext context)
-{
-    ThreadStatePtr state;
-
-    TRY
-    {
-	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
-
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    if ((state = malloc(sizeof(struct ThreadState))) == NULL)
-	    {
-		THROW(e1, "malloc");
-	    }
-
-	    memset(&state, 0, sizeof(struct ThreadState));	
-
-	    state->context.display = display;
-	    state->context.context = context;	
-	    state->markedCurrent   = 0;
-	    state->markedDestroyed = 0;
-
-	    hashPut(state);
-	}
-	else
-	{
-	    THROW(e1, "context already exists");
-	}
-
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
-    }
-    CATCH (e1)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-         * fails, so just ignore errors.
-         */
-	pthread_rwlock_unlock(&stateHashLock);
 	return -1;
     }
 
     return 0;
 }
 
-int
-gvUntrack(EGLDisplay display,
-	  EGLContext context)
+GVcontextstateptr
+gvGetEglContextState(EGLDisplay display,
+		     EGLContext context)
 {
-    ThreadStatePtr state;
+    size_t  tempDisplay = (size_t) display;
+    size_t  tempContext = (size_t) context;
+    void   *tempState;
 
     TRY
     {
-	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
+	if ((tempState
+	     = gvGetProcessState(getCantorPair(tempDisplay,
+					       tempContext))) == NULL)
 	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
-
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    hashDel(state);
-	    free(state);
-	}
-	else
-	{
-	    THROW(e1, "no such context");
-	}
-
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
+	    THROW(e0, "gvGetProcessState");
 	}
     }
     CATCH (e0)
     {
-	return -1;
+	return NULL;
     }
-    CATCH (e1)
+
+    return (GVcontextstateptr) tempState;
+}
+
+int
+gvSetEglContextState(EGLDisplay        display,
+		     EGLContext        context,
+		     GVcontextstateptr state)
+{
+    size_t  tempDisplay = (size_t) display;
+    size_t  tempContext = (size_t) context;
+
+    TRY
     {
-	/* Try to unlock. At this point we can't do anything if unlocking
-         * fails, so just ignore errors.
-         */
-	pthread_rwlock_unlock(&stateHashLock);
+	if (gvPutProcessState(getCantorPair(tempDisplay,
+					    tempContext), state) == -1)
+	{
+	    THROW(e0, "gvPutProcessState");
+	}
+    }
+    CATCH (e0)
+    {
 	return -1;
     }
 
@@ -190,79 +112,81 @@ gvUntrack(EGLDisplay display,
 
 int
 gvIsMarkedCurrent(EGLDisplay display,
-		  EGLContext context)
+                  EGLContext context)
 {
-    ThreadStatePtr state;
+    int               markedCurrent;
+    GVcontextstateptr state;
 
     TRY
     {
-	if (pthread_rwlock_rdlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_rdlock");
-	}
+        if (pthread_rwlock_rdlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_rdlock");
+        }
 
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    THROW(e1, "no such context");
-	}
+        if ((state = gvGetEglContextState(display, context)) == NULL)
+        {
+            THROW(e1, "no such context");
+        }
 
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
-	}
+	markedCurrent = state->markedCurrent;
+
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
     CATCH (e1)
     {
-	/* Try to unlock. At this point we can't do anything if unlocking
+        /* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&stateHashLock);
-	return -1;
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
-    return state->markedCurrent;
+    return markedCurrent;
 }
 
-int
-gvMarkCurrent(EGLDisplay display,
-	      EGLContext context)
+int gvSetMarkCurrent(EGLDisplay display,
+		     EGLContext context)
 {
-    ThreadStatePtr state;
+    GVcontextstateptr state;
 
     TRY
     {
-	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
+        if (pthread_rwlock_wrlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_wrlock");
+        }
 
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    THROW(e1, "no such context");
-	}
+        if ((state = gvGetEglContextState(display, context)) == NULL)
+        {
+            THROW(e1, "no such context");
+        }
 
-	state->markedCurrent = 1;
+        state->markedCurrent = 1;
 
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
-	}
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
     CATCH (e1)
     {
-	/* Try to unlock. At this point we can't do anything if unlocking
+        /* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&stateHashLock);
-	return -1;
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
     return 0;
@@ -270,172 +194,147 @@ gvMarkCurrent(EGLDisplay display,
 
 int
 gvIsMarkedDestroyed(EGLDisplay display,
-		    EGLContext context)
+                    EGLContext context)
 {
-    ThreadStatePtr state;
+    int               markedDestroyed;
+    GVcontextstateptr state;
 
     TRY
     {
-	if (pthread_rwlock_rdlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_rdlock");
-	}
+        if (pthread_rwlock_rdlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_rdlock");
+        }
 
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    THROW(e1, "no such context");
-	}
+        if ((state = gvGetEglContextState(display, context)) == NULL)
+        {
+            THROW(e1, "no such context");
+        }
 
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_mutex_unlock");
-	}
+	markedDestroyed = state->markedDestroyed;
+
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
     CATCH (e1)
     {
-	/* Try to unlock. At this point we can't do anything if unlocking
+        /* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&stateHashLock);
-	return -1;
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
-    return state->markedDestroyed;
+    return markedDestroyed;
 }
 
 int
-gvMarkDestroyed(EGLDisplay display,
-		EGLContext context)
+gvSetMarkDestroyed(EGLDisplay display,
+		   EGLContext context)
 {
-    ThreadStatePtr state;
+    GVcontextstateptr state;
 
     TRY
     {
-	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
+        if (pthread_rwlock_wrlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_wrlock");
+        }
 
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    THROW(e1, "no such context");
-	}
+        if ((state = gvGetEglContextState(display, context)) == NULL)
+        {
+            THROW(e1, "no such context");
+        }
 
-	state->markedDestroyed = 1;
+        state->markedDestroyed = 1;
 
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
-	}
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
     CATCH (e1)
     {
-	/* Try to unlock. At this point we can't do anything if unlocking
+        /* Try to unlock. At this point we can't do anything if unlocking
          * fails, so just ignore errors.
          */
-	pthread_rwlock_unlock(&stateHashLock);
-	return -1;
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
     return 0;
 }
 
 int
-gvGetCurrent(EGLDisplay     *display,
-	     EGLContext     *context,
-	     GVtransportptr *transport)
+gvDelDispatcherState(GVdispatcherstateptr state)
 {
-    ThreadStatePtr state; 
+    initIfNotDoneAlready();
 
     TRY
     {
-	if (gvGetThreadState(&state) == -1)
+	if (gvDelThreadState(DISPATCHER_STATE_KEY) == -1)
 	{
-	    THROW(e0, "no current context");
-	}
-
-	*display   = state->context.display;
-	*context   = state->context.context;
-	*transport = state->transport;
-    }
-    CATCH(e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvSetCurrent(EGLDisplay     display,
-	     EGLContext     context,
-	     GVtransportptr transport)
-{
-    ThreadStatePtr state;
-
-    TRY
-    {
-	if (pthread_rwlock_wrlock(&stateHashLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
-
-	if ((state = hashGet(display, context)) == NULL)
-	{
-	    THROW(e1, "no such context");	    
-	}
-
-	state->markedCurrent = 1;
-	state->transport     = transport;
-
-	if (gvSetThreadState(state) == -1)
-	{
-	    THROW(e1, "gvSetThreadState");
-	}
-
-	if (pthread_rwlock_unlock(&stateHashLock) != 0)
-	{
-	    THROW(e1, "pthread_rwlock_unlock");
+	    THROW(e0, "gvDelThreadState");
 	}
     }
     CATCH (e0)
     {
 	return -1;
     }
-    CATCH (e1)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-         * fails, so just ignore errors.
-         */
-	pthread_rwlock_unlock(&stateHashLock);
-	return -1;
-    }
 
     return 0;
 }
 
-int
-gvTermStateTracker()
+GVdispatcherstateptr
+gvGetDispatcherState(void)
 {
+    void *tempState;
+
+    initIfNotDoneAlready();
+
     TRY
     {
-	if (gvTermThreadState() == -1)
+	if ((tempState = gvGetThreadState(DISPATCHER_STATE_KEY)) == NULL)
 	{
-	    THROW(e0, "gvInitThreadState");
+	    THROW(e0, "gvGetThreadState");
+	}
+    }
+    CATCH (e0)
+    {
+	return NULL;
+    }
+
+    return (GVdispatcherstateptr) tempState;
+}
+
+int
+gvSetDispatcherState(GVdispatcherstateptr state)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	/* NOTE: only set once per thread in concept 0, so no collisions */
+	if (gvPutThreadState(DISPATCHER_STATE_KEY, state) == -1)
+	{
+	    THROW(e0, "gvSetThreadState");
 	}
     }
     CATCH (e0)
     {
 	return -1;
     }
-   
+
     return 0;
 }
+

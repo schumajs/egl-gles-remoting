@@ -16,111 +16,122 @@
 
 #include "transport.h" 
 
-/*! ***************************************************************************
- * \brief 
- *
- * \return 
- */
-int
-gvInitStateTracker();
+struct GVcontextstate {
+    /* Context state */
+    int            markedCurrent;
+    int            markedDestroyed;
+
+    /* Context transport */
+    GVtransportptr transport;
+};
+
+typedef struct GVcontextstate *GVcontextstateptr;
+
+typedef GVtransportptr GVdispatcherstateptr;
 
 /*! ***************************************************************************
- * \brief 
- *
- * \param  [in] display
- * \param  [in] context
- * \return 
- */
-int
-gvTrack(EGLDisplay display,
-	EGLContext context);
-
-/*! ***************************************************************************
- * \brief 
+ * \brief
  *
  * \param  [in] display
  * \param  [in] context
- * \return 
+ * \return
  */
 int
-gvUntrack(EGLDisplay display,
-	  EGLContext context);
-
+gvDelEglContextState(EGLDisplay display,
+		     EGLContext context);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
  * \param  [in] display
  * \param  [in] context
- * \return 
+ * \return
+ */
+GVcontextstateptr
+gvGetEglContextState(EGLDisplay display,
+		     EGLContext context);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] display
+ * \param  [in] context
+ * \param  [in] state
+ * \return
+ */
+int
+gvSetEglContextState(EGLDisplay        display,
+		     EGLContext        context,
+		     GVcontextstateptr state);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] display
+ * \param  [in] context
+ * \return
  */
 int
 gvIsMarkedCurrent(EGLDisplay display,
-		  EGLContext context);
+                  EGLContext context);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
  * \param  [in] display
  * \param  [in] context
- * \return 
+ * \return
  */
-int
-gvMarkCurrent(EGLDisplay display,
-	      EGLContext context);
+int gvSetMarkCurrent(EGLDisplay display,
+		     EGLContext context);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
  * \param  [in] display
  * \param  [in] context
- * \return 
+ * \return
  */
 int
 gvIsMarkedDestroyed(EGLDisplay display,
-		    EGLContext context);
+                    EGLContext context);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
  * \param  [in] display
  * \param  [in] context
- * \return 
+ * \return
  */
 int
-gvMarkDestroyed(EGLDisplay display,
-		EGLContext context);
+gvSetMarkDestroyed(EGLDisplay display,
+		   EGLContext context);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
- * \param  [in] display
- * \param  [in] context
- * \return 
+ * \param  [in] state
+ * \return
  */
 int
-gvGetCurrent(EGLDisplay     *display,
-	     EGLContext     *context,
-	     GVtransportptr *transport);
+gvDelDispatcherState(GVdispatcherstateptr state);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
- * \param  [in] display
- * \param  [in] context
- * \return 
+ * \param  [out] state
+ * \return
  */
-int
-gvSetCurrent(EGLDisplay     display,
-	     EGLContext     context,
-	     GVtransportptr transport);
+GVdispatcherstateptr
+gvGetDispatcherState(void);
 
 /*! ***************************************************************************
- * \brief 
+ * \brief
  *
- * \return 
+ * \param  [in] state
+ * \return
  */
 int
-gvTermStateTracker();
+gvSetDispatcherState(GVdispatcherstateptr state);
 
 #endif /* CLIENT_STATE_TRACKER_H_*/

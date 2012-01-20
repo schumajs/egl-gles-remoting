@@ -36,7 +36,7 @@ SH_C1_OBJS  :=
 CL_TAR := clientlib
 CL_BIN := gvclient
 
-CL_C0_OBJS  := client_heap_manager.0.o client_janitor.0.o client_serializer.0.o
+CL_C0_OBJS  := client_heap_manager.0.o client_janitor.0.o client_serializer.0.o client_state_tracker.0.o
 CL_C1_OBJS  :=
 
 ###############################################################################

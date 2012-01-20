@@ -17,6 +17,7 @@
  * Client serializer implementation
  */
 
+/* TODO replace cantor pairing: slow, needs bignum */
 #define getCantorPair(k1, k2) \
     0.5 * ((k1 + k2) * (k1 + k2 + 1) + k2)
 
