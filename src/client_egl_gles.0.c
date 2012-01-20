@@ -245,6 +245,8 @@ eglTerminate(EGLDisplay display)
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
+    transport = gvGetThreadTransport();
+
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_TERMINATE);
     gvSendData(transport, &display, sizeof(EGLDisplay));
 
@@ -257,7 +259,8 @@ eglTerminate(EGLDisplay display)
 }
 
 const char
-*eglQueryString(EGLDisplay display, EGLint name)
+*eglQueryString(EGLDisplay display,
+		EGLint     name)
 {
     GVtransportptr  transport;
 
@@ -267,6 +270,8 @@ const char
 
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_QUERYSTRING);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -280,4 +285,329 @@ const char
     gvReceiveData(transport, queryString, queryStringLength * sizeof(char));
 
     return queryString;
+}
+
+EGLBoolean
+eglGetConfigs(EGLDisplay display,
+	      EGLConfig *configs,
+	      EGLint     configSize,
+	      EGLint    *numConfig)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLBoolean      status;
+    int             configsNull = (configs == NULL);
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETCONFIGS);
+    gvSendData(transport, &display, sizeof(EGLDisplay));
+    gvSendData(transport, &configsNull, sizeof(int));
+    gvSendData(transport, &configSize, sizeof(EGLint));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &status, sizeof(EGLBoolean));
+    gvReceiveData(transport, numConfig, sizeof(EGLint));
+    /* NOTE configs has to be preallocated. If configs == NULL then no configs
+     * are returned, only numConfig is returned (see spec. p. 23)
+     */
+    if (!configsNull)
+    {
+        gvReceiveData(transport, configs, *numConfig * sizeof(EGLConfig));
+    }
+
+    return status;
+}
+
+EGLBoolean
+eglChooseConfig(EGLDisplay    display,
+		const EGLint *attribList,
+		EGLConfig    *configs,
+		EGLint        configSize,
+		EGLint       *numConfig)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLBoolean      status;
+    int             attribListSize;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
+
+    getAttribListSize(attribList, attribListSize);
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CHOOSECONFIG);
+    gvSendData(transport, &display, sizeof(EGLDisplay));
+    gvSendData(transport, &attribListSize, sizeof(int));
+    gvSendData(transport, attribList, attribListSize * sizeof(EGLint));
+    gvSendData(transport, &configSize, sizeof(EGLint));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &status, sizeof(EGLBoolean));
+    gvReceiveData(transport, numConfig, sizeof(EGLint));
+    /* NOTE configs has to be preallocated, configs == NULL undefined ... */
+    gvReceiveData(transport, configs, *numConfig * sizeof(EGLConfig));
+
+    return status;
+}
+
+EGLBoolean
+eglGetConfigAttrib(EGLDisplay  display,
+		   EGLConfig   config,
+		   EGLint      attribute,
+		   EGLint     *value)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLBoolean      status;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CHOOSECONFIG);
+    gvSendData(transport, &display, sizeof(EGLDisplay));
+    gvSendData(transport, &config, sizeof(EGLConfig));
+    gvSendData(transport, &attribute, sizeof(EGLint));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &status, sizeof(EGLBoolean));
+    gvReceiveData(transport, value, sizeof(EGLint));
+
+    return status;
+}
+
+EGLSurface
+eglCreateWindowSurface(EGLDisplay           display,
+		       EGLConfig            config,
+		       EGLNativeWindowType  window,
+		       const EGLint        *attribList)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLSurface      surface;
+    int             attribListSize;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
+
+    getAttribListSize(attribList, attribListSize);
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CREATEWINDOWSURFACE);
+    gvSendData(transport, &display, sizeof(EGLDisplay));
+    gvSendData(transport, &config, sizeof(EGLConfig));
+    gvSendData(transport, &window, sizeof(EGLNativeWindowType));
+    gvSendData(transport, &attribListSize, sizeof(int));
+    gvSendData(transport, attribList, attribListSize * sizeof(EGLint));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &surface, sizeof(EGLSurface));
+
+    return surface;
+}
+
+EGLSurface
+eglCreatePbufferSurface(EGLDisplay    display,
+			EGLConfig     config,
+			const EGLint *attribList)
+{
+    return NULL;
+}
+
+EGLSurface
+eglCreatePixmapSurface(EGLDisplay           display,
+		       EGLConfig            config,
+                       EGLNativePixmapType  pixmap,
+		       const EGLint        *attribList)
+{
+    return NULL;
+}
+
+EGLBoolean
+eglDestroySurface(EGLDisplay display,
+		  EGLSurface surface)
+{
+    return 1;
+}
+
+EGLBoolean 
+eglQuerySurface(EGLDisplay  display,
+		EGLSurface  surface,
+		EGLint      attribute,
+		EGLint     *value)
+{
+    return 1;
+}
+
+EGLBoolean
+eglBindAPI(EGLenum api)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLBoolean      status;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_BINDAPI);
+    gvSendData(transport, &api, sizeof(EGLenum));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &status, sizeof(EGLBoolean));
+
+    return status;
+}
+
+EGLenum
+eglQueryAPI()
+{
+    return 0;
+}
+
+EGLBoolean
+eglWaitClient()
+{
+    return 1;
+}
+
+EGLBoolean
+eglReleaseThread(void)
+{
+    return 1;
+}
+
+EGLSurface
+eglCreatePbufferFromClientBuffer(EGLDisplay       display,
+				 EGLenum          bufferType,
+				 EGLClientBuffer  buffer,
+				 EGLConfig        config,
+				 const EGLint    *attribList)
+{
+    return NULL;
+}
+
+EGLBoolean
+eglSurfaceAttrib(EGLDisplay display,
+		 EGLSurface surface,
+		 EGLint     attribute,
+		 EGLint     value)
+{
+    return 1;
+}
+
+EGLBoolean
+eglBindTexImage(EGLDisplay display,
+		EGLSurface surface,
+		EGLint     buffer)
+{
+    return 1;
+}
+
+EGLBoolean
+eglReleaseTexImage(EGLDisplay display,
+		   EGLSurface surface,
+		   EGLint     buffer)
+{
+    return 1;
+}
+
+EGLBoolean
+eglSwapInterval(EGLDisplay display,
+		EGLint     interval)
+{
+    return 1;
+}
+
+EGLContext
+eglCreateContext(EGLDisplay    display,
+		 EGLConfig     config,
+		 EGLContext    shareContext,
+		 const EGLint *attribList)
+{
+    return NULL;
+}
+
+EGLBoolean
+eglDestroyContext(EGLDisplay display,
+		  EGLContext context)
+{
+    return 1;
+}
+
+EGLBoolean
+eglMakeCurrent(EGLDisplay display,
+	       EGLSurface drawSurface,
+	       EGLSurface readSurface,
+	       EGLContext context)
+{
+    return 1;
+}
+
+EGLContext
+eglGetCurrentContext()
+{
+    return NULL;
+}
+
+EGLSurface
+eglGetCurrentSurface(EGLint readdraw)
+{
+    return NULL;
+}
+
+EGLDisplay
+eglGetCurrentDisplay()
+{
+    return NULL;
+}
+
+EGLBoolean
+eglQueryContext(EGLDisplay  display,
+		EGLContext  context,
+		EGLint      attribute,
+		EGLint     *value)
+{
+    return 1;
+}
+
+EGLBoolean
+eglWaitGL()
+{
+    return 1;
+}
+
+EGLBoolean
+eglWaitNative(EGLint engine)
+{
+    return 1;
+}
+
+EGLBoolean
+eglSwapBuffers(EGLDisplay display,
+	       EGLSurface surface)
+{
+    return 1;
+}
+
+EGLBoolean
+eglCopyBuffers(EGLDisplay          display,
+	       EGLSurface          surface,
+	       EGLNativePixmapType target)
+{
+    return 1;
 }
