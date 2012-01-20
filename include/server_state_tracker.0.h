@@ -17,14 +17,12 @@
 
 #include "transport.h"
 
-struct GVjanitorstate {
+struct GVoffsetstate {
     pthread_t      thread;
     GVtransportptr transport;
 };
 
-typedef struct GVjanitorstate *GVjanitorstateptr;
-
-typedef GVtransportptr GVdispatcherstateptr;
+typedef struct GVoffsetstate *GVoffsetstateptr;
 
 /*! ***************************************************************************
  * \brief
@@ -33,7 +31,7 @@ typedef GVtransportptr GVdispatcherstateptr;
  * \return
  */
 int
-gvDelJanitorState(size_t offset);
+gvDelOffsetState(size_t offset);
 
 /*! ***************************************************************************
  * \brief
@@ -41,8 +39,8 @@ gvDelJanitorState(size_t offset);
  * \param  [in] offset
  * \return
  */
-GVjanitorstateptr
-gvGetJanitorState(size_t offset);
+GVoffsetstateptr
+gvGetOffsetState(size_t offset);
 
 /*! ***************************************************************************
  * \brief
@@ -52,34 +50,32 @@ gvGetJanitorState(size_t offset);
  * \return
  */
 int
-gvSetJanitorState(size_t            offset,
-		  GVjanitorstateptr state);
+gvSetOffsetState(size_t           offset,
+		 GVoffsetstateptr state);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] state
  * \return
  */
 int
-gvDelDispatcherState(GVdispatcherstateptr state);
+gvDelThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [out] state
  * \return
  */
-GVdispatcherstateptr
-gvGetDispatcherState(void);
+GVtransportptr
+gvGetThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] state
+ * \param  [in] transport
  * \return
  */
 int
-gvSetDispatcherState(GVdispatcherstateptr state);
+gvSetThreadTransport(GVtransportptr transport);
 
 #endif /* SERVER_STATE_TRACKER_0_H_ */

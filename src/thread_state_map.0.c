@@ -84,7 +84,7 @@ gvInitThreadStateMap()
 }
 
 int
-gvDelThreadState(unsigned long key)
+gvDelThreadItem(unsigned long key)
 {
     struct Item *item = NULL;
     struct Item *hashtable;
@@ -116,7 +116,7 @@ gvDelThreadState(unsigned long key)
 }
 
 void
-*gvGetThreadState(unsigned long int key)
+*gvGetThreadItem(unsigned long int key)
 {
     struct Item *item = NULL;
     struct Item *hashtable;
@@ -144,8 +144,8 @@ void
 }
 
 int
-gvPutThreadState(unsigned long int  key,
-		 void              *value)
+gvPutThreadItem(unsigned long int  key,
+		void              *value)
 {
     struct Item *item;
     struct Item *hashtable;

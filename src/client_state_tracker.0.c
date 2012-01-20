@@ -24,7 +24,7 @@
 #define getCantorPair(k1, k2) \
     0.5 * ((k1 + k2) * (k1 + k2 + 1) + k2)
 
-#define DISPATCHER_STATE_KEY 0
+#define THREAD_TRANSPORT_KEY 0
 
 static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
 static int              threadStateMapInitiated = 0;
@@ -47,10 +47,10 @@ gvDelEglContextState(EGLDisplay display,
 
     TRY
     {
-	if (gvDelProcessState(getCantorPair(tempDisplay,
-					    tempContext)) == -1)
+	if (gvDelProcessItem(getCantorPair(tempDisplay,
+					   tempContext)) == -1)
 	{
-	    THROW(e0, "gvDelProcessState");
+	    THROW(e0, "gvDelProcessItem");
 	}
     }
     CATCH (e0)
@@ -72,10 +72,10 @@ gvGetEglContextState(EGLDisplay display,
     TRY
     {
 	if ((tempState
-	     = gvGetProcessState(getCantorPair(tempDisplay,
-					       tempContext))) == NULL)
+	     = gvGetProcessItem(getCantorPair(tempDisplay,
+					      tempContext))) == NULL)
 	{
-	    THROW(e0, "gvGetProcessState");
+	    THROW(e0, "gvGetProcessItem");
 	}
     }
     CATCH (e0)
@@ -96,10 +96,10 @@ gvSetEglContextState(EGLDisplay        display,
 
     TRY
     {
-	if (gvPutProcessState(getCantorPair(tempDisplay,
-					    tempContext), state) == -1)
+	if (gvPutProcessItem(getCantorPair(tempDisplay,
+					   tempContext), state) == -1)
 	{
-	    THROW(e0, "gvPutProcessState");
+	    THROW(e0, "gvPutProcessItem");
 	}
     }
     CATCH (e0)
@@ -276,15 +276,15 @@ gvSetMarkDestroyed(EGLDisplay display,
 }
 
 int
-gvDelDispatcherState(GVdispatcherstateptr state)
+gvDelThreadTransport()
 {
     initIfNotDoneAlready();
 
     TRY
     {
-	if (gvDelThreadState(DISPATCHER_STATE_KEY) == -1)
+	if (gvDelThreadItem(THREAD_TRANSPORT_KEY) == -1)
 	{
-	    THROW(e0, "gvDelThreadState");
+	    THROW(e0, "gvDelThreadItem");
 	}
     }
     CATCH (e0)
@@ -295,18 +295,18 @@ gvDelDispatcherState(GVdispatcherstateptr state)
     return 0;
 }
 
-GVdispatcherstateptr
-gvGetDispatcherState(void)
+GVtransportptr
+gvGetThreadTransport(void)
 {
-    void *tempState;
+    void *tempTransport;
 
     initIfNotDoneAlready();
 
     TRY
     {
-	if ((tempState = gvGetThreadState(DISPATCHER_STATE_KEY)) == NULL)
+	if ((tempTransport = gvGetThreadItem(THREAD_TRANSPORT_KEY)) == NULL)
 	{
-	    THROW(e0, "gvGetThreadState");
+	    THROW(e0, "gvGetThreadItem");
 	}
     }
     CATCH (e0)
@@ -314,20 +314,20 @@ gvGetDispatcherState(void)
 	return NULL;
     }
 
-    return (GVdispatcherstateptr) tempState;
+    return (GVtransportptr) tempTransport;
 }
 
 int
-gvSetDispatcherState(GVdispatcherstateptr state)
+gvSetThreadTransport(GVtransportptr transport)
 {
     initIfNotDoneAlready();
 
     TRY
     {
 	/* NOTE: only set once per thread in concept 0, so no collisions */
-	if (gvPutThreadState(DISPATCHER_STATE_KEY, state) == -1)
+	if (gvPutThreadItem(THREAD_TRANSPORT_KEY, transport) == -1)
 	{
-	    THROW(e0, "gvSetThreadState");
+	    THROW(e0, "gvPutThreadItem");
 	}
     }
     CATCH (e0)

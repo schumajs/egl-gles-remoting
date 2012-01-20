@@ -8,11 +8,6 @@
 #include "server_janitor.h"
 #include "sleep.h"
 
-#include "server_dispatcher.h"
-GVdispatchfunc eglGlesJumpTable[0] = {
-
-};
-
 static GVheapmgrptr heapMgr;
 static GVjanitorptr janitor;
 
@@ -70,11 +65,11 @@ int main()
 	    THROW(e0, "gvStartJanitor");
 	}
 
-	gvSleep(2, 0);
+	gvSleep(1, 0);
 
 	demoClient();
 
-	gvSleep(20, 0);
+	gvSleep(5, 0);
 
 	if (gvStopJanitor(janitor) == -1)
 	{

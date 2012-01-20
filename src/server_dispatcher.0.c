@@ -33,10 +33,10 @@ struct ThreadArg {
 static void
 *dispatchLoopThread(void *data)
 {
-    GVcmdid             cmdId;
-    GVjanitorstateptr   janitorState;
-    GVdispatchfunc     *jumpTable;
-    struct ThreadArg   *threadArg;
+    GVcmdid           cmdId;
+    GVdispatchfunc   *jumpTable;
+    GVoffsetstateptr  offsetState;
+    struct ThreadArg *threadArg;
     GVtransportptr      transport;
 
     TRY
@@ -53,30 +53,32 @@ static void
 	
 	free(threadArg);
 
-	if (gvSetDispatcherState(transport) == -1)
+	if (gvSetThreadTransport(transport) == -1)
 	{
-	    THROW(e0, "gvSetDispatcherState");
+	    THROW(e0, "gvSetThreadTransport");
 	}
 
-	if ((janitorState = malloc(sizeof(struct GVjanitorstate))) == NULL)
+	if ((offsetState = malloc(sizeof(struct GVoffsetstate))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	janitorState->thread    = pthread_self();
-	janitorState->transport = transport;
+	offsetState->thread    = pthread_self();
+	offsetState->transport = transport;
 
-	if (gvSetJanitorState(transport->offset, janitorState) == -1)
+	if (gvSetOffsetState(transport->offset, offsetState) == -1)
 	{
-	    THROW(e0, "gvSetDispatcherState");
+	    THROW(e0, "gvSetProcessState");
 	}
 
 	while (1)
 	{
+	    printf("PID %i THREAD %ul IS LISTENING\n", getpid(), offsetState->thread);
 	    if ((cmdId = gvStartReceiving(transport, NULL)) == -1)
 	    {
 		THROW(e0, "gvStartReceiving");
 	    }
+	    printf("PID %i THREAD %ul GOT %i\n", getpid(), offsetState->thread, cmdId);
 
 	    jumpTable[cmdId]();
 

@@ -36,7 +36,7 @@ SH_C1_OBJS  :=
 CL_TAR := clientlib
 CL_BIN := gvclient
 
-CL_C0_OBJS  := client_heap_manager.0.o client_janitor.0.o client_serializer.0.o client_state_tracker.0.o
+CL_C0_OBJS  := client_egl_gles.0.o client_heap_manager.0.o client_janitor.0.o client_serializer.0.o client_state_tracker.0.o
 CL_C1_OBJS  :=
 
 ###############################################################################
@@ -45,7 +45,7 @@ CL_C1_OBJS  :=
 SL_TAR := serverlib
 SL_BIN := gvserver
 
-SL_C0_OBJS  :=  server_dispatcher.0.o server_heap_manager.0.o server_janitor.0.o server_serializer.0.o server_state_tracker.0.o
+SL_C0_OBJS  := server_egl_gles.0.o server_dispatcher.0.o server_heap_manager.0.o server_janitor.0.o server_serializer.0.o server_state_tracker.0.o
 SL_C1_OBJS  :=
 
 ###############################################################################

@@ -31,7 +31,7 @@ static struct Item      *hashtable     = NULL;
 static pthread_rwlock_t  hashtableLock = PTHREAD_RWLOCK_INITIALIZER;
 
 int
-gvDelProcessState(unsigned long int key)
+gvDelProcessItem(unsigned long int key)
 {
     struct Item *item = NULL;
 
@@ -68,7 +68,7 @@ gvDelProcessState(unsigned long int key)
 }
 
 void
-*gvGetProcessState(unsigned long int key)
+*gvGetProcessItem(unsigned long int key)
 {
     struct Item *item = NULL;
     
@@ -101,8 +101,8 @@ void
 }
 
 int
-gvPutProcessState(unsigned long int  key,
-		  void              *value)
+gvPutProcessItem(unsigned long int  key,
+		 void              *value)
 {
     struct Item *item;
 

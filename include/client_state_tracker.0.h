@@ -27,8 +27,6 @@ struct GVcontextstate {
 
 typedef struct GVcontextstate *GVcontextstateptr;
 
-typedef GVtransportptr GVdispatcherstateptr;
-
 /*! ***************************************************************************
  * \brief
  *
@@ -110,28 +108,26 @@ gvSetMarkDestroyed(EGLDisplay display,
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] state
  * \return
  */
 int
-gvDelDispatcherState(GVdispatcherstateptr state);
+gvDelThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [out] state
  * \return
  */
-GVdispatcherstateptr
-gvGetDispatcherState(void);
+GVtransportptr
+gvGetThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] state
+ * \param  [in] transport
  * \return
  */
 int
-gvSetDispatcherState(GVdispatcherstateptr state);
+gvSetThreadTransport(GVtransportptr transport);
 
 #endif /* CLIENT_STATE_TRACKER_H_*/

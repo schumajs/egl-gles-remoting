@@ -27,7 +27,7 @@ gvInitThreadStateMap(void);
  * \return
  */
 int
-gvDelThreadState(unsigned long key);
+gvDelThreadItem(unsigned long key);
 
 /*! ***************************************************************************
  * \brief
@@ -36,7 +36,7 @@ gvDelThreadState(unsigned long key);
  * \return
  */
 void
-*gvGetThreadState(unsigned long int key);
+*gvGetThreadItem(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief
@@ -46,8 +46,8 @@ void
  * \return
  */
 int
-gvPutThreadState(unsigned long int  key,
-		 void              *value);
+gvPutThreadItem(unsigned long int  key,
+		void              *value);
 
 /*! ***************************************************************************
  * \brief

@@ -19,7 +19,7 @@
  * \return
  */
 int
-gvDelProcessState(unsigned long int key);
+gvDelProcessItem(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief
@@ -28,7 +28,7 @@ gvDelProcessState(unsigned long int key);
  * \return
  */
 void
-*gvGetProcessState(unsigned long int key);
+*gvGetProcessItem(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief
@@ -38,7 +38,7 @@ void
  * \return
  */
 int
-gvPutProcessState(unsigned long int  key,
-		  void              *value);
+gvPutProcessItem(unsigned long int  key,
+		 void              *value);
 
 #endif /* PROCESS_STATE_MAP_H_*/

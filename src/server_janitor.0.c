@@ -20,7 +20,7 @@
 #include "server_state_tracker.0.h"
 #include "transport.h"
 
-extern GVdispatchfunc eglGlesJumpTable[1];
+extern GVdispatchfunc eglGlesJumpTable[11];
 
 /* ****************************************************************************
  * Janitor
@@ -67,7 +67,6 @@ void _gvBonjour()
 	{
 	    THROW(e0, "gvReceiveData");
 	}
-
 
 	status = gvBonjour(offset, length);
 
@@ -277,31 +276,31 @@ gvBonjour(size_t offset,
 int
 gvAuRevoir(size_t offset)
 {
-    GVjanitorstateptr janitorState;
+    GVoffsetstateptr offsetState;
 
     TRY
     {
-	if ((janitorState = gvGetJanitorState(offset)) == NULL)
+	if ((offsetState = gvGetOffsetState(offset)) == NULL)
 	{
-	    THROW(e0, "gvGetJanitorState");
+	    THROW(e0, "gvGetProcessState");
 	}
 
-	if (pthread_cancel(janitorState->thread) != 0)
+	if (pthread_cancel(offsetState->thread) != 0)
 	{
 	    THROW(e0, "pthread_cancel");
 	}
 
-	if (gvDestroyTransport(janitorState->transport) == -1)
+	if (gvDestroyTransport(offsetState->transport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}
 
-	if (gvDelJanitorState(offset) == -1)
+	if (gvDelOffsetState(offset) == -1)
 	{
 	    THROW(e0, "gvDelJanitorState");
 	}
 
-	/* free(janitorState); */
+	/* free(processState); */
     }
     CATCH (e0)
     {

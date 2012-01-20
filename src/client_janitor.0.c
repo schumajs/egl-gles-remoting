@@ -16,6 +16,7 @@
 #include "janitor.h"
 #include "lock.h"
 #include "transport.h"
+#include "shared_memory.h"
 
 extern char           **environ;
 
@@ -34,7 +35,7 @@ initJanitorClient()
     
     TRY
     {
-	if ((janitorShm = malloc(sizeof(GVshmptr))) == NULL)
+	if ((janitorShm = malloc(sizeof(struct GVshm))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}

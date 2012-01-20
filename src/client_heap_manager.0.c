@@ -16,6 +16,7 @@
 #include "heap_manager.h"
 #include "lock.h"
 #include "transport.h"
+#include "shared_memory.h"
 
 extern char           **environ;
 
@@ -34,7 +35,7 @@ initHeapMgrClient()
     
     TRY
     {
-	if ((heapMgrShm = malloc(sizeof(GVshmptr))) == NULL)
+	if ((heapMgrShm = malloc(sizeof(struct GVshm))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
