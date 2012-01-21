@@ -10,6 +10,7 @@
  */
 
 #define _MULTI_THREADED
+#include <errno.h>
 #include <pthread.h>
 #include <uthash.h>
 
@@ -100,6 +101,7 @@ gvDelThreadStateItem(unsigned long key)
 
 	if (item == NULL)
 	{
+	    errno = EINVAL;
 	    THROW(e0, "no such item");
 	}
 
@@ -132,6 +134,7 @@ void
 
 	if (item == NULL)
 	{
+	    errno = EINVAL;
 	    THROW(e0, "no such item");
 	}
     }

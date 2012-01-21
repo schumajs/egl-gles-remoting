@@ -9,6 +9,8 @@
  * \details
  */
 
+#include <stdlib.h>
+
 #include "error.h"
 #include "server_serializer.h"
 #include "sleep.h"

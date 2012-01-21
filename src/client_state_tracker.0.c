@@ -20,7 +20,9 @@
  * Client state tracker implementation
  */
 
-#define THREAD_TRANSPORT_KEY 0
+#define CURRENT_DISPLAY_KEY   0x0
+#define CURRENT_CONTEXT_KEY   0x0
+#define CURRENT_TRANSPORT_KEY 0x1
 
 static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
 static int              threadStateMapInitiated = 0;
@@ -35,8 +37,9 @@ static int              threadStateMapInitiated = 0;
     } while (0)
 
 struct ForeachArg {
-    EGLDisplay           display;
-    GVforeachcontextfunc func;
+    EGLDisplay            display;
+    GVforeachcontextfunc  func;
+    void                 *arg;
 };
 
 static void
@@ -49,14 +52,15 @@ foreachContextStateCallback(unsigned long int  key,
     
     if (state->display == foreachArg->display)
     {
-	(foreachArg->func)(state);
+	(foreachArg->func)(state, foreachArg->arg);
     }
 }
 
 static void
-setAllMarkedDestroyedCallback(GVcontextstateptr state)
+setAllMarkedDestroyedCallback(GVcontextstateptr  state,
+			      void              *arg)
 {
-    state->markedDestroyed = 1;
+    state->markedDestroyed = *((int *)arg);
 }
 
 int
@@ -138,8 +142,9 @@ gvGetEglContextState(EGLDisplay display,
 }
 
 int
-gvForeachEglContextState(EGLDisplay           display,
-			 GVforeachcontextfunc func)
+gvForeachEglContextState(EGLDisplay            display,
+			 GVforeachcontextfunc  func,
+			 void                 *arg)
 {
     struct ForeachArg foreachArg;
 
@@ -152,6 +157,7 @@ gvForeachEglContextState(EGLDisplay           display,
 
 	foreachArg.display = display;
 	foreachArg.func    = func;
+	foreachArg.arg     = arg;
 
 	if (gvForeachProcessStateItem(foreachContextStateCallback,
 				      &foreachArg) == -1)
@@ -263,7 +269,8 @@ gvIsMarkedCurrent(EGLDisplay display,
 }
 
 int gvSetMarkedCurrent(EGLDisplay display,
-		       EGLContext context)
+		       EGLContext context,
+		       int        markedCurrent)
 {
     GVcontextstateptr state;
 
@@ -281,7 +288,7 @@ int gvSetMarkedCurrent(EGLDisplay display,
 	    THROW(e1, "gvGetProcessStateItem");
 	}
 
-        state->markedCurrent = 1;
+        state->markedCurrent = markedCurrent;
 
         if (pthread_rwlock_unlock(&processStateLock) != 0)
         {
@@ -350,7 +357,8 @@ gvIsMarkedDestroyed(EGLDisplay display,
 
 int
 gvSetMarkedDestroyed(EGLDisplay display,
-		     EGLContext context)
+		     EGLContext context,
+		     int        markedDestroyed)
 {
     GVcontextstateptr state;
 
@@ -368,7 +376,7 @@ gvSetMarkedDestroyed(EGLDisplay display,
 	    THROW(e1, "gvGetProcessStateItem");
 	}
 
-        state->markedDestroyed = 1;
+        state->markedDestroyed = markedDestroyed;
 
         if (pthread_rwlock_unlock(&processStateLock) != 0)
         {
@@ -392,13 +400,104 @@ gvSetMarkedDestroyed(EGLDisplay display,
 }
 
 int
-gvSetAllMarkedDestroyed(EGLDisplay display)
+gvSetAllMarkedDestroyed(EGLDisplay display,
+			int        markedDestroyed)
 {
     TRY
     {
-	if (gvForeachEglContextState(display, setAllMarkedDestroyedCallback))
+	if (gvForeachEglContextState(display,
+				     setAllMarkedDestroyedCallback,
+				     &markedDestroyed) == -1)
 	{
 	    THROW(e0, "gvForeachEglContextState");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+EGLDisplay
+gvGetCurrentThreadDisplay()
+{
+    EGLDisplay display;
+
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	if ((display
+	     = (EGLDisplay) gvGetThreadStateItem(CURRENT_DISPLAY_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return NULL;
+    }
+
+    return display;
+}
+
+int
+gvSetCurrentThreadDisplay(EGLDisplay display)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	/* NOTE: only set once per thread in concept 0, so no collisions */
+	if (gvPutThreadStateItem(CURRENT_DISPLAY_KEY, display) == -1)
+	{
+	    THROW(e0, "gvPutThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+EGLContext
+gvGetCurrentThreadContext()
+{
+    EGLContext context;
+
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	if ((context
+	     = (EGLContext) gvGetThreadStateItem(CURRENT_CONTEXT_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return NULL;
+    }
+
+    return context;
+}
+
+int
+gvSetCurrentThreadContext(EGLContext context)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	/* NOTE: only set once per thread in concept 0, so no collisions */
+	if (gvPutThreadStateItem(CURRENT_CONTEXT_KEY, context) == -1)
+	{
+	    THROW(e0, "gvPutThreadStateItem");
 	}
     }
     CATCH (e0)
@@ -420,7 +519,7 @@ gvGetCurrentThreadTransport(void)
     {
 	if ((transport
 	     = (GVtransportptr) gvGetThreadStateItem(
-		 THREAD_TRANSPORT_KEY)) == NULL)
+		 CURRENT_TRANSPORT_KEY)) == NULL)
 	{
 	    THROW(e0, "gvGetThreadStateItem");
 	}
@@ -441,7 +540,7 @@ gvSetCurrentThreadTransport(GVtransportptr transport)
     TRY
     {
 	/* NOTE: only set once per thread in concept 0, so no collisions */
-	if (gvPutThreadStateItem(THREAD_TRANSPORT_KEY, transport) == -1)
+	if (gvPutThreadStateItem(CURRENT_TRANSPORT_KEY, transport) == -1)
 	{
 	    THROW(e0, "gvPutThreadStateItem");
 	}

@@ -60,30 +60,4 @@ int
 gvStopSending(GVtransportptr transport,
 	      GVlockptr      lock);
 
-/*! ***************************************************************************
- * \brief
- * 
- * \param  [in] transport
- * \param  [in] toAddr
- * \param  [in] length
- * \return
- */
-int
-gvReceiveData(GVtransportptr  transport,
-	      void           *toAddr, 
-	      size_t          length);
-
-/*! ***************************************************************************
- * \brief
- *
- * \param  [in] transport
- * \param  [in] fromAddr
- * \param  [in] length
- * \return
- */
-int
-gvSendData(GVtransportptr  transport,
-	   const void     *fromAddr,
-	   size_t          length);
-
 #endif /* SERVER_SERIALIZER_H */

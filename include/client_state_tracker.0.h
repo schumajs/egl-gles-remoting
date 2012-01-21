@@ -31,7 +31,7 @@ struct GVcontextstate {
 
 typedef struct GVcontextstate *GVcontextstateptr;
 
-typedef void (*GVforeachcontextfunc)(GVcontextstateptr);
+typedef void (*GVforeachcontextfunc)(GVcontextstateptr, void*);
 
 /*! ***************************************************************************
  * \brief
@@ -63,8 +63,9 @@ gvGetEglContextState(EGLDisplay display,
  * \return
  */
 int
-gvForeachEglContextState(EGLDisplay           display,
-			 GVforeachcontextfunc func);
+gvForeachEglContextState(EGLDisplay            display,
+			 GVforeachcontextfunc  func,
+                         void                 *arg);
 
 /*! ***************************************************************************
  * \brief
@@ -95,10 +96,12 @@ gvIsMarkedCurrent(EGLDisplay display,
  *
  * \param  [in] display
  * \param  [in] context
+ * \param  [in] markedCurrent
  * \return
  */
 int gvSetMarkedCurrent(EGLDisplay display,
-		       EGLContext context);
+		       EGLContext context,
+		       int        markedCurrent);
 
 /*! ***************************************************************************
  * \brief
@@ -116,20 +119,58 @@ gvIsMarkedDestroyed(EGLDisplay display,
  *
  * \param  [in] display
  * \param  [in] context
+ * \param  [in] markedDestroyed
  * \return
  */
 int
 gvSetMarkedDestroyed(EGLDisplay display,
-		     EGLContext context);
+		     EGLContext context,
+                     int        markedDestroyed);
 
 /*! ***************************************************************************
  * \brief
  *
  * \param  [in] display
+ * \param  [in] markedDestroyed
  * \return
  */
 int
-gvSetAllMarkedDestroyed(EGLDisplay display);
+gvSetAllMarkedDestroyed(EGLDisplay display,
+                        int        markedDestroyed);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \return
+ */
+EGLDisplay
+gvGetCurrentThreadDisplay(void);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \return
+ */
+int
+gvSetCurrentThreadDisplay(EGLDisplay display);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \return
+ */
+EGLContext
+gvGetCurrentThreadContext(void);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \return
+ */
+int
+gvSetCurrentThreadContext(EGLContext context);
 
 /*! ***************************************************************************
  * \brief

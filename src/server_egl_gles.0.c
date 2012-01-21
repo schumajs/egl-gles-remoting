@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
 
 #include "error.h"
 #include "server_dispatcher.h"
@@ -42,7 +43,6 @@ void _eglGetError()
 
     gvStartSending(transport, NULL, callId);
     gvSendData(transport, &error, sizeof(EGLint));
-
 }
 
 static
@@ -112,18 +112,17 @@ _eglQueryString()
     EGLDisplay      display;
     EGLint          name;
     const char     *queryString;
-    size_t          queryStringLength;
 
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &display, sizeof(EGLDisplay));
     gvReceiveData(transport, &name, sizeof(EGLint));
 
     queryString = eglQueryString(display, name);
-    queryStringLength = strlen(queryString);
 
     gvStartSending(transport, NULL, callId);
-    gvSendData(transport, &queryStringLength, sizeof(size_t));
-    gvSendData(transport, queryString, queryStringLength * sizeof(char));
+    gvSendVarSizeData(transport,
+		      queryString,
+		      (strlen(queryString) + 1) * sizeof(char));
 }
 
 void
@@ -134,30 +133,34 @@ _eglGetConfigs()
     GVcallid        callId;
     EGLBoolean      status;
     EGLDisplay      display;
-    EGLConfig      *configs = NULL;
-    int             configsNull;
+    EGLConfig      *configs;
     EGLint          configSize;
     EGLint          numConfig;
 
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &display, sizeof(EGLDisplay));
-    gvReceiveData(transport, &configsNull, sizeof(int));
     gvReceiveData(transport, &configSize, sizeof(EGLint));
     
-    if (!configsNull)
+    /* A - optional OUT pointer */
+    if (configSize > 0)
     {
-	configs = malloc(configSize * sizeof(EGLConfig));
+	configs = malloc(configSize);
     }
-
+    else
+    {
+	configs = NULL;
+    }
+    
     status = eglGetConfigs(display, configs, configSize, &numConfig);
 
     gvStartSending(transport, NULL, callId);
-    gvSendData(transport, &status, sizeof(EGLBoolean));
+    gvSendData(transport, &status, sizeof(EGLBoolean));    
     gvSendData(transport, &numConfig, sizeof(EGLint));
 
-    if (!configsNull)
+    /* B - optional OUT pointer */
+    if (configSize > 0)
     {
-	gvSendData(transport, configs, numConfig * sizeof(EGLConfig));
+	gvSendData(transport, configs, numConfig * sizeof(EGLConfig));	
 	free(configs);
     }
 }
@@ -171,31 +174,41 @@ _eglChooseConfig()
     EGLBoolean      status;
     EGLDisplay      display;
     EGLint         *attribList;
-    int             attribListSize;
     EGLConfig      *configs;
     EGLint          configSize;
     EGLint          numConfig;
 
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &display, sizeof(EGLDisplay));
-    gvReceiveData(transport, &attribListSize, sizeof(int));
-
-    attribList = malloc(attribListSize * sizeof(EGLint));
-
-    gvReceiveData(transport, attribList, attribListSize * sizeof(EGLint));
+    attribList = (EGLint *)gvReceiveVarSizeData(transport);
     gvReceiveData(transport, &configSize, sizeof(EGLint));
 
+    /* A - optional OUT pointer */
+    if (configSize > 0)
+    {
+	configs = malloc(configSize);
+    }
+    else
+    {
+	configs = NULL;
+    }
+   
     configs = malloc(configSize * sizeof(EGLConfig));
 
     status = eglChooseConfig(display, attribList, configs, configSize, &numConfig);
 
+    free(attribList);
+
     gvStartSending(transport, NULL, callId);
     gvSendData(transport, &status, sizeof(EGLBoolean));
     gvSendData(transport, &numConfig, sizeof(EGLint));
-    gvSendData(transport, configs, numConfig * sizeof(EGLConfig));
-    
-    free(attribList);
-    free(configs);
+
+    /* B - optional OUT pointer */
+    if (configSize > 0)
+    {
+	gvSendData(transport, configs, numConfig * sizeof(EGLConfig));	
+	free(configs);
+    }
 }
 
 void
@@ -232,18 +245,13 @@ _eglCreateWindowSurface()
     EGLDisplay           display;
     EGLConfig            config;
     EGLNativeWindowType  window;
-    int                  attribListSize;
     EGLint              *attribList;
 
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &display, sizeof(EGLDisplay));
     gvReceiveData(transport, &config, sizeof(EGLConfig));
     gvReceiveData(transport, &window, sizeof(EGLNativeWindowType));
-    gvReceiveData(transport, &attribListSize, sizeof(int));
-
-    attribList = malloc(attribListSize * sizeof(EGLint));
-
-    gvReceiveData(transport, attribList, attribListSize * sizeof(EGLint));
+    attribList = (EGLint *)gvReceiveVarSizeData(transport);
 
     surface = eglCreateWindowSurface(display, config, window, attribList);
 
@@ -346,7 +354,25 @@ _eglSwapInterval()
 void
 _eglCreateContext()
 {
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
+    GVcallid        callId;
+    EGLContext      context;
+    EGLDisplay      display;
+    EGLConfig       config;
+    EGLContext      shareContext;
+    EGLint         *attribList;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &display, sizeof(EGLDisplay));
+    gvReceiveData(transport, &config, sizeof(EGLConfig));
+    gvReceiveData(transport, &shareContext, sizeof(EGLContext));
+    attribList = (EGLint *)gvReceiveVarSizeData(transport);
+
+    context = eglCreateContext(display, config, shareContext, attribList);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &context, sizeof(EGLContext));
 }
 
 void
@@ -407,6 +433,172 @@ void
 _eglCopyBuffers()
 {
 
+}
+
+/* ***************************************************************************
+ * GLES2
+ */
+
+void
+_glCreateShader()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+    GLenum         type;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &type, sizeof(GLenum));
+
+    shader = glCreateShader(type);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &shader, sizeof(GLuint));
+}
+
+void
+_glShaderSource()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+    GLsizei        count;
+    GLchar       **string;
+    GLint         *length;
+    
+    int             passingType;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+    gvReceiveData(transport, &count, sizeof(GLsizei));
+
+    string = malloc(count * sizeof(GLchar*));
+
+    /* There are several possibilities to pass "string", see spec. p. 27 */
+    gvReceiveData(transport, &passingType, sizeof(int));
+
+    if (passingType == 0)
+    {
+	length = NULL;
+    }
+    else if (passingType == 1)
+    {
+	length = gvReceiveVarSizeData(transport);
+    }
+
+    int i;
+    for (i = 0; i < count; i++)
+    {
+	string[i] = gvReceiveVarSizeData(transport);
+    }
+
+    glShaderSource(shader, count, string, length);
+
+    if (passingType == 0)
+    {
+
+    }
+    else if (passingType == 1)
+    {
+	free(length);
+    }
+
+    for (i = 0; i < count; i++)
+    {
+	free(string[i]);
+    }
+
+    free(string);
+}
+
+void
+_glCompileShader()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+
+    glCompileShader(shader);
+}
+
+void
+_glGetShaderiv()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+    GLenum         pname;
+    GLint          params;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+    gvReceiveData(transport, &pname, sizeof(GLenum));
+
+    glGetShaderiv(shader, pname, &params);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &params, sizeof(GLint));
+}
+
+void
+_glGetShaderInfoLog()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+    GLsizei        bufsize;
+    GLsizei        length;
+    GLchar        *infoLog;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+    gvReceiveData(transport, &bufsize, sizeof(GLsizei));
+
+    infoLog = malloc(bufsize * sizeof(GLchar));
+
+    glGetShaderInfoLog(shader, bufsize, &length, infoLog);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &length, sizeof(GLsizei));
+    gvSendData(transport, infoLog, length * sizeof(GLchar));
+}
+
+void
+_glDeleteShader()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         shader;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+
+    glDeleteShader(shader);
+}
+
+void
+_glCreateProgram()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+
+    program = glCreateProgram();
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &program, sizeof(GLuint));
 }
 
 /* ****************************************************************************

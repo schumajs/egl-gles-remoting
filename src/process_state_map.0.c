@@ -84,15 +84,8 @@ gvForeachProcessStateItem(GVforeachfunc  func,
 {
     struct Item *item, *tempItem;
 
-    TRY
-    {
-	HASH_ITER(hh, hashtable, item, tempItem) {
-	    func(item->key, item->value, arg);
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
+    HASH_ITER(hh, hashtable, item, tempItem) {
+	func(item->key, item->value, arg);
     }
 
     return 0;

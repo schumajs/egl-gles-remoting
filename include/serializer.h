@@ -69,4 +69,60 @@ typedef int GVcallid;
 #define GV_CMDID_EGL_SWAPBUFFERS                   0x29
 #define GV_CMDID_EGL_COPYBUFFERS                   0x2a
 
+#define GV_CMDID_GLES2_CREATESHADER                0x2b
+#define GV_CMDID_GLES2_SHADERSOURCE                0x2c
+#define GV_CMDID_GLES2_COMPILESHADER               0x2d
+#define GV_CMDID_GLES2_GETSHADERIV                 0x2e
+#define GV_CMDID_GLES2_GETSHADERINFOLOG            0x2f
+#define GV_CMDID_GLES2_DELETESHADER                0x30
+#define GV_CMDID_GLES2_CREATEPROGRAM               0x31
+
+/*! ***************************************************************************
+ * \brief
+ * 
+ * \param  [in] transport
+ * \param  [in] toAddr
+ * \param  [in] length
+ * \return
+ */
+int
+gvReceiveData(GVtransportptr  transport,
+	      void           *toAddr, 
+	      size_t          length);
+
+/*! ***************************************************************************
+ * \brief
+ * 
+ * \param  [in] transport
+ * \return
+ */
+void
+*gvReceiveVarSizeData(GVtransportptr transport);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \param  [in] fromAddr
+ * \param  [in] length
+ * \return
+ */
+int
+gvSendData(GVtransportptr  transport,
+	   const void     *fromAddr,
+	   size_t          length);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] transport
+ * \param  [in] fromAddr
+ * \param  [in] length
+ * \return
+ */
+int
+gvSendVarSizeData(GVtransportptr  transport,
+		  const void     *fromAddr,
+		  size_t          length);
+
 #endif /* SERIALIZER_H */
