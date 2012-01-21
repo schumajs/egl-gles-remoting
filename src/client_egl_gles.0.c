@@ -956,3 +956,131 @@ glCreateProgram()
 
     return program;
 }
+
+void
+glAttachShader(GLuint program,
+	       GLuint shader)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_ATTACHSHADER);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendData(transport, &shader, sizeof(GLuint));
+}
+
+void
+glBindAttribLocation(GLuint        program,
+		     GLuint        index,
+		     const GLchar *name)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_BINDATTRIBLOCATION);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendData(transport, &index, sizeof(GLuint));
+    gvSendVarSizeData(transport, name, (strlen(name) + 1) * sizeof(GLchar));
+}
+
+void
+glLinkProgram(GLuint program)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_LINKPROGRAM);
+    gvSendData(transport, &program, sizeof(GLuint));
+}
+
+void
+glGetProgramiv(GLuint  program,
+	       GLenum  pname,
+	       GLint  *params)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GETPROGRAMIV);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendData(transport, &pname, sizeof(GLenum));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, params, sizeof(GLint));
+}
+
+void
+glGetProgramInfoLog(GLuint   program,
+		    GLsizei  bufsize,
+		    GLsizei *length,
+		    GLchar  *infolog)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GETPROGRAMINFOLOG);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendData(transport, &bufsize, sizeof(GLsizei));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, length, sizeof(GLsizei));
+    gvReceiveData(transport, infolog, *length * sizeof(GLchar));
+}
+
+void
+glDeleteProgram(GLuint program)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_DELETEPROGRAM);
+    gvSendData(transport, &program, sizeof(GLuint));
+}
+
+void
+glClearColor(GLclampf red,
+	     GLclampf green,
+	     GLclampf blue,
+	     GLclampf alpha)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_CLEARCOLOR);
+    gvSendData(transport, &red, sizeof(GLclampf));
+    gvSendData(transport, &green, sizeof(GLclampf));
+    gvSendData(transport, &blue, sizeof(GLclampf));
+    gvSendData(transport, &alpha, sizeof(GLclampf));
+}

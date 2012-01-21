@@ -601,6 +601,135 @@ _glCreateProgram()
     gvSendData(transport, &program, sizeof(GLuint));
 }
 
+void
+_glAttachShader()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+    GLuint         shader;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+    gvReceiveData(transport, &shader, sizeof(GLuint));
+
+    glAttachShader(program, shader);
+}
+
+void
+_glBindAttribLocation()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid        callId;
+    GLuint          program;
+    GLuint          index;
+    GLchar         *name;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+    gvReceiveData(transport, &index, sizeof(GLuint));
+    name = (GLchar *)gvReceiveVarSizeData(transport);
+
+    glBindAttribLocation(program, index, name);
+
+    free(name);
+}
+
+void
+_glLinkProgram()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+
+    glLinkProgram(program);
+}
+
+void
+_glGetProgramiv()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+    GLenum         pname;
+    GLint          params;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+    gvReceiveData(transport, &pname, sizeof(GLenum));
+
+    glGetProgramiv(program, pname, &params);
+
+    gvStartSending(transport, NULL, callId);
+
+}
+
+void
+_glGetProgramInfoLog()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+    GLsizei        bufsize;
+    GLsizei        length;
+    GLchar        *infoLog;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+    gvReceiveData(transport, &bufsize, sizeof(GLsizei));
+
+    infoLog = malloc(bufsize * sizeof(GLchar));
+
+    glGetShaderInfoLog(program, bufsize, &length, infoLog);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &length, sizeof(GLsizei));
+    gvSendData(transport, infoLog, length * sizeof(GLchar));
+}
+
+void
+_glDeleteProgram()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+
+    glDeleteProgram(program);
+}
+
+void
+_glClearColor()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLclampf       red;
+    GLclampf       green;
+    GLclampf       blue;
+    GLclampf       alpha;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &red, sizeof(GLclampf));
+    gvReceiveData(transport, &green, sizeof(GLclampf));
+    gvReceiveData(transport, &blue, sizeof(GLclampf));
+    gvReceiveData(transport, &alpha, sizeof(GLclampf));
+
+    glClearColor(red, green, blue, alpha);
+}
+
+
 /* ****************************************************************************
  * Jump table
  */

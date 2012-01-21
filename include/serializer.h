@@ -76,6 +76,13 @@ typedef int GVcallid;
 #define GV_CMDID_GLES2_GETSHADERINFOLOG            0x2f
 #define GV_CMDID_GLES2_DELETESHADER                0x30
 #define GV_CMDID_GLES2_CREATEPROGRAM               0x31
+#define GV_CMDID_GLES2_ATTACHSHADER                0x32
+#define GV_CMDID_GLES2_BINDATTRIBLOCATION          0x33
+#define GV_CMDID_GLES2_LINKPROGRAM                 0x34
+#define GV_CMDID_GLES2_GETPROGRAMIV                0x35
+#define GV_CMDID_GLES2_GETPROGRAMINFOLOG           0x36
+#define GV_CMDID_GLES2_DELETEPROGRAM               0x37
+#define GV_CMDID_GLES2_CLEARCOLOR                  0x38
 
 /*! ***************************************************************************
  * \brief
