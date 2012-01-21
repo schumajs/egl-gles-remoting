@@ -31,7 +31,7 @@ void _notInUse()
 static
 void _eglGetError()
 {
-    GVtransportptr transport = gvGetThreadTransport();
+    GVtransportptr transport = gvGetCurrentThreadTransport();
 
     GVcallid       callId;
     EGLint         error;
@@ -48,7 +48,7 @@ void _eglGetError()
 static
 void _eglGetDisplay()
 {
-    GVtransportptr       transport = gvGetThreadTransport();
+    GVtransportptr       transport = gvGetCurrentThreadTransport();
 
     GVcallid             callId;
     EGLDisplay           display;
@@ -66,7 +66,7 @@ void _eglGetDisplay()
 static
 void _eglInitialize()
 {
-    GVtransportptr transport = gvGetThreadTransport();
+    GVtransportptr transport = gvGetCurrentThreadTransport();
     
     GVcallid       callId;
     EGLBoolean     status;
@@ -88,7 +88,7 @@ void _eglInitialize()
 static
 void _eglTerminate()
 {
-    GVtransportptr transport = gvGetThreadTransport();
+    GVtransportptr transport = gvGetCurrentThreadTransport();
 
     GVcallid       callId;
     EGLBoolean     status;
@@ -106,7 +106,7 @@ void _eglTerminate()
 void
 _eglQueryString()
 {
-    GVtransportptr  transport = gvGetThreadTransport();
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
     GVcallid        callId;
     EGLDisplay      display;
@@ -129,7 +129,7 @@ _eglQueryString()
 void
 _eglGetConfigs()
 {
-    GVtransportptr  transport = gvGetThreadTransport();
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
     GVcallid        callId;
     EGLBoolean      status;
@@ -165,7 +165,7 @@ _eglGetConfigs()
 void
 _eglChooseConfig()
 {
-    GVtransportptr  transport = gvGetThreadTransport();
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
     GVcallid        callId;
     EGLBoolean      status;
@@ -201,7 +201,7 @@ _eglChooseConfig()
 void
 _eglGetConfigAttrib()
 {
-    GVtransportptr  transport = gvGetThreadTransport();
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
     GVcallid        callId;
     EGLBoolean      status;
@@ -225,7 +225,7 @@ _eglGetConfigAttrib()
 void
 _eglCreateWindowSurface()
 {
-    GVtransportptr       transport = gvGetThreadTransport();
+    GVtransportptr       transport = gvGetCurrentThreadTransport();
 
     GVcallid             callId;
     EGLSurface           surface;
@@ -280,7 +280,7 @@ _eglQuerySurface()
 void
 _eglBindAPI()
 {
-    GVtransportptr  transport = gvGetThreadTransport();
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
     GVcallid        callId;
     EGLBoolean      status;

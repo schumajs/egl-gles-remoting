@@ -12,6 +12,8 @@
 #ifndef THREAD_STATE_MAP_H_
 #define THREAD_STATE_MAP_H_
 
+typedef void (*GVforeachfunc)(unsigned long int, void*, void*);
+
 /*! ***************************************************************************
  * \brief
  *
@@ -27,7 +29,7 @@ gvInitThreadStateMap(void);
  * \return
  */
 int
-gvDelThreadItem(unsigned long key);
+gvDelThreadStateItem(unsigned long key);
 
 /*! ***************************************************************************
  * \brief
@@ -36,7 +38,18 @@ gvDelThreadItem(unsigned long key);
  * \return
  */
 void
-*gvGetThreadItem(unsigned long int key);
+*gvGetThreadStateItem(unsigned long int key);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] func
+ * \param  [in] arg
+ * \return
+ */
+int
+gvForeachThreadStateItem(GVforeachfunc  func,
+			 void          *arg);
 
 /*! ***************************************************************************
  * \brief
@@ -46,8 +59,8 @@ void
  * \return
  */
 int
-gvPutThreadItem(unsigned long int  key,
-		void              *value);
+gvPutThreadStateItem(unsigned long int  key,
+		     void              *value);
 
 /*! ***************************************************************************
  * \brief

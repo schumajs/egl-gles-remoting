@@ -84,7 +84,7 @@ gvInitThreadStateMap()
 }
 
 int
-gvDelThreadItem(unsigned long key)
+gvDelThreadStateItem(unsigned long key)
 {
     struct Item *item = NULL;
     struct Item *hashtable;
@@ -116,7 +116,7 @@ gvDelThreadItem(unsigned long key)
 }
 
 void
-*gvGetThreadItem(unsigned long int key)
+*gvGetThreadStateItem(unsigned long int key)
 {
     struct Item *item = NULL;
     struct Item *hashtable;
@@ -144,8 +144,34 @@ void
 }
 
 int
-gvPutThreadItem(unsigned long int  key,
-		void              *value)
+gvForeachThreadStateItem(GVforeachfunc  func,
+			 void          *arg)
+{
+    struct Item *item, *tempItem;
+    struct Item *hashtable;
+
+    TRY
+    {
+	if ((hashtable = (struct Item *)getThreadSpecificData()) == NULL)
+	{
+	    THROW(e0, "no thread state");
+	}
+
+	HASH_ITER(hh, hashtable, item, tempItem) {
+	    func(item->key, item->value, arg);
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvPutThreadStateItem(unsigned long int  key,
+		     void              *value)
 {
     struct Item *item;
     struct Item *hashtable;

@@ -17,6 +17,10 @@
 #include "transport.h" 
 
 struct GVcontextstate {
+    /* Context */
+    EGLDisplay     display;
+    EGLContext     context;
+
     /* Context state */
     int            markedCurrent;
     int            markedDestroyed;
@@ -26,6 +30,8 @@ struct GVcontextstate {
 };
 
 typedef struct GVcontextstate *GVcontextstateptr;
+
+typedef void (*GVforeachcontextfunc)(GVcontextstateptr);
 
 /*! ***************************************************************************
  * \brief
@@ -53,12 +59,23 @@ gvGetEglContextState(EGLDisplay display,
  * \brief
  *
  * \param  [in] display
+ * \param  [in] func
+ * \return
+ */
+int
+gvForeachEglContextState(EGLDisplay           display,
+			 GVforeachcontextfunc func);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] display
  * \param  [in] context
  * \param  [in] state
  * \return
  */
 int
-gvSetEglContextState(EGLDisplay        display,
+gvPutEglContextState(EGLDisplay        display,
 		     EGLContext        context,
 		     GVcontextstateptr state);
 
@@ -80,8 +97,8 @@ gvIsMarkedCurrent(EGLDisplay display,
  * \param  [in] context
  * \return
  */
-int gvSetMarkCurrent(EGLDisplay display,
-		     EGLContext context);
+int gvSetMarkedCurrent(EGLDisplay display,
+		       EGLContext context);
 
 /*! ***************************************************************************
  * \brief
@@ -102,16 +119,17 @@ gvIsMarkedDestroyed(EGLDisplay display,
  * \return
  */
 int
-gvSetMarkDestroyed(EGLDisplay display,
-		   EGLContext context);
+gvSetMarkedDestroyed(EGLDisplay display,
+		     EGLContext context);
 
 /*! ***************************************************************************
  * \brief
  *
+ * \param  [in] display
  * \return
  */
 int
-gvDelThreadTransport(void);
+gvSetAllMarkedDestroyed(EGLDisplay display);
 
 /*! ***************************************************************************
  * \brief
@@ -119,7 +137,7 @@ gvDelThreadTransport(void);
  * \return
  */
 GVtransportptr
-gvGetThreadTransport(void);
+gvGetCurrentThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
@@ -128,6 +146,6 @@ gvGetThreadTransport(void);
  * \return
  */
 int
-gvSetThreadTransport(GVtransportptr transport);
+gvSetCurrentThreadTransport(GVtransportptr transport);
 
 #endif /* CLIENT_STATE_TRACKER_H_*/

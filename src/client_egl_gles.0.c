@@ -76,7 +76,7 @@ initEglGlesClient()
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	if (gvSetThreadTransport(defaultTransport) == -1)
+	if (gvSetCurrentThreadTransport(defaultTransport) == -1)
 	{
 	    THROW(e0, "gvSetThreadTransport");
 	}
@@ -90,7 +90,7 @@ initEglGlesClient()
 	eglContextState->markedDestroyed = 0;
 	eglContextState->transport       = defaultTransport;
 
-	if (gvSetEglContextState(DEFAULT_DISPLAY,
+	if (gvPutEglContextState(DEFAULT_DISPLAY,
 				 DEFAULT_CONTEXT,
 				 eglContextState) == -1)
 	{
@@ -127,7 +127,7 @@ initEglGlesClient()
 
 #define initThreadIfNotDoneAlready()					\
     do {								\
-	if (gvGetThreadTransport() == NULL)				\
+	if (gvGetCurrentThreadTransport() == NULL)			\
 	{								\
 	    GVcontextstateptr state;					\
 	    								\
@@ -139,7 +139,7 @@ initEglGlesClient()
                 exit(2);						\
 	    }								\
 									\
-	    if (gvSetThreadTransport(state->transport) == -1)		\
+	    if (gvSetCurrentThreadTransport(state->transport) == -1)	\
 	    {								\
 		exit(2);						\
 	    }								\
@@ -176,7 +176,7 @@ eglGetError()
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETERROR);
 
@@ -197,7 +197,7 @@ eglGetDisplay(EGLNativeDisplayType displayId)
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETDISPLAY);
     gvSendData(transport, &displayId, sizeof(EGLNativeDisplayType));
@@ -221,7 +221,7 @@ eglInitialize(EGLDisplay  display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_INITIALIZE);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -245,7 +245,7 @@ eglTerminate(EGLDisplay display)
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_TERMINATE);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -271,7 +271,7 @@ const char
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_QUERYSTRING);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -302,7 +302,7 @@ eglGetConfigs(EGLDisplay display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETCONFIGS);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -339,7 +339,7 @@ eglChooseConfig(EGLDisplay    display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     getAttribListSize(attribList, attribListSize);
 
@@ -372,7 +372,7 @@ eglGetConfigAttrib(EGLDisplay  display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CHOOSECONFIG);
     gvSendData(transport, &display, sizeof(EGLDisplay));
@@ -401,7 +401,7 @@ eglCreateWindowSurface(EGLDisplay           display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     getAttribListSize(attribList, attribListSize);
 
@@ -462,7 +462,7 @@ eglBindAPI(EGLenum api)
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
-    transport = gvGetThreadTransport();
+    transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_BINDAPI);
     gvSendData(transport, &api, sizeof(EGLenum));

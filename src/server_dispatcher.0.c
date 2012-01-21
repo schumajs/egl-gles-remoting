@@ -53,7 +53,7 @@ static void
 	
 	free(threadArg);
 
-	if (gvSetThreadTransport(transport) == -1)
+	if (gvSetCurrentThreadTransport(transport) == -1)
 	{
 	    THROW(e0, "gvSetThreadTransport");
 	}
@@ -66,9 +66,9 @@ static void
 	offsetState->thread    = pthread_self();
 	offsetState->transport = transport;
 
-	if (gvSetOffsetState(transport->offset, offsetState) == -1)
+	if (gvPutOffsetState(transport->offset, offsetState) == -1)
 	{
-	    THROW(e0, "gvSetProcessState");
+	    THROW(e0, "gvPutProcessState");
 	}
 
 	while (1)

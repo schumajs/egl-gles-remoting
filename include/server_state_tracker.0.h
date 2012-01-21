@@ -50,7 +50,7 @@ gvGetOffsetState(size_t offset);
  * \return
  */
 int
-gvSetOffsetState(size_t           offset,
+gvPutOffsetState(size_t           offset,
 		 GVoffsetstateptr state);
 
 /*! ***************************************************************************
@@ -58,16 +58,8 @@ gvSetOffsetState(size_t           offset,
  *
  * \return
  */
-int
-gvDelThreadTransport(void);
-
-/*! ***************************************************************************
- * \brief
- *
- * \return
- */
 GVtransportptr
-gvGetThreadTransport(void);
+gvGetCurrentThreadTransport(void);
 
 /*! ***************************************************************************
  * \brief
@@ -76,6 +68,6 @@ gvGetThreadTransport(void);
  * \return
  */
 int
-gvSetThreadTransport(GVtransportptr transport);
+gvSetCurrentThreadTransport(GVtransportptr transport);
 
 #endif /* SERVER_STATE_TRACKER_0_H_ */

@@ -10,7 +10,6 @@
  */
 
 #include <errno.h>
-#include <pthread.h>
 #include <uthash.h>
 
 #include "error.h"
@@ -27,21 +26,15 @@ struct Item {
     UT_hash_handle     hh;
 };
 
-static struct Item      *hashtable     = NULL;
-static pthread_rwlock_t  hashtableLock = PTHREAD_RWLOCK_INITIALIZER;
+static struct Item *hashtable = NULL;
 
 int
-gvDelProcessItem(unsigned long int key)
+gvDelProcessStateItem(unsigned long int key)
 {
     struct Item *item = NULL;
 
     TRY
     {
-	if (pthread_rwlock_wrlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
-
 	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
 
 	if (item == NULL)
@@ -53,11 +46,6 @@ gvDelProcessItem(unsigned long int key)
 	HASH_DELETE(hh, hashtable, item);
 
 	free(item);
-
-	if (pthread_rwlock_unlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_unlock");
-	}
     }
     CATCH (e0)
     {
@@ -68,28 +56,18 @@ gvDelProcessItem(unsigned long int key)
 }
 
 void
-*gvGetProcessItem(unsigned long int key)
+*gvGetProcessStateItem(unsigned long int key)
 {
     struct Item *item = NULL;
     
     TRY
     {
-    	if (pthread_rwlock_rdlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_rdlock");
-	}
-
 	HASH_FIND(hh, hashtable, &key, sizeof(unsigned long int), item);
 	
 	if (item == NULL)
 	{
 	    errno = EINVAL;
 	    THROW(e0, "no such item");
-	}
-
-	if (pthread_rwlock_unlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_unlock");
 	}
     }
     CATCH (e0)
@@ -101,18 +79,33 @@ void
 }
 
 int
-gvPutProcessItem(unsigned long int  key,
-		 void              *value)
+gvForeachProcessStateItem(GVforeachfunc  func,
+			  void          *arg)
+{
+    struct Item *item, *tempItem;
+
+    TRY
+    {
+	HASH_ITER(hh, hashtable, item, tempItem) {
+	    func(item->key, item->value, arg);
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvPutProcessStateItem(unsigned long int  key,
+		      void              *value)
 {
     struct Item *item;
 
     TRY
     {
-	if (pthread_rwlock_wrlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_wrlock");
-	}
-
 	if ((item = malloc(sizeof(struct Item))) == NULL)
 	{
 	    THROW(e0, "malloc");
@@ -122,11 +115,6 @@ gvPutProcessItem(unsigned long int  key,
 	item->value = value;
 
 	HASH_ADD(hh, hashtable, key, sizeof(unsigned long int), item);
-
-	if (pthread_rwlock_unlock(&hashtableLock) != 0)
-	{
-	    THROW(e0, "pthread_rwlock_unlock");
-	}
     }
     CATCH (e0)
     {

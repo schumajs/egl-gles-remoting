@@ -285,6 +285,11 @@ gvAuRevoir(size_t offset)
 	    THROW(e0, "gvGetProcessState");
 	}
 
+	if (gvDelOffsetState(offset) == -1)
+	{
+	    THROW(e0, "gvDelJanitorState");
+	}
+
 	if (pthread_cancel(offsetState->thread) != 0)
 	{
 	    THROW(e0, "pthread_cancel");
@@ -293,11 +298,6 @@ gvAuRevoir(size_t offset)
 	if (gvDestroyTransport(offsetState->transport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
-	}
-
-	if (gvDelOffsetState(offset) == -1)
-	{
-	    THROW(e0, "gvDelJanitorState");
 	}
 
 	/* free(processState); */

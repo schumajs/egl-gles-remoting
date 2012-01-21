@@ -9,6 +9,7 @@
  * \details
  */
 
+#include <pthread.h>
 #include <stdlib.h>
 
 #include "error.h"
@@ -22,7 +23,8 @@
 
 #define THREAD_TRANSPORT_KEY 0
 
-static int threadStateMapInitiated = 0;
+static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
+static int              threadStateMapInitiated = 0;
 
 #define initIfNotDoneAlready()					\
     do {							\
@@ -38,14 +40,32 @@ gvDelOffsetState(size_t offset)
 {
     TRY
     {
-	if (gvDelProcessItem(offset) == -1)
+        if (pthread_rwlock_wrlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_wrlock");
+        }
+
+	if (gvDelProcessStateItem(offset) == -1)
 	{
-	    THROW(e0, "gvDelProcessItem");
+	    THROW(e1, "gvDelProcessStateItem");
 	}
+
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
 	return -1;
+    }
+    CATCH (e1)
+    {
+        /* Try to unlock. At this point we can't do anything if unlocking
+         * fails, so just ignore errors.
+         */
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
     return 0;
@@ -54,77 +74,96 @@ gvDelOffsetState(size_t offset)
 GVoffsetstateptr
 gvGetOffsetState(size_t offset)
 {
-    void *tempState;
+    GVoffsetstateptr state;
 
     TRY
     {
-	if ((tempState = gvGetProcessItem(offset)) == NULL)
+        if (pthread_rwlock_rdlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_rdlock");
+        }
+
+	if ((state
+	     = (GVoffsetstateptr) gvGetProcessStateItem(offset)) == NULL)
 	{
-	    THROW(e0, "gvGetProcessItem");
+	    THROW(e1, "gvGetProcessStateItem");
 	}
+
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
 	return NULL;
     }
+    CATCH (e1)
+    {
+        /* Try to unlock. At this point we can't do anything if unlocking
+         * fails, so just ignore errors.
+         */
+        pthread_rwlock_unlock(&processStateLock);
+        return NULL;
+    }
 
-    return (GVoffsetstateptr) tempState;
+    return state;
 }
 
 int
-gvSetOffsetState(size_t           offset,
+gvPutOffsetState(size_t           offset,
 		 GVoffsetstateptr state)
 {
     TRY
     {
+        if (pthread_rwlock_wrlock(&processStateLock) != 0)
+        {
+            THROW(e0, "pthread_rwlock_rdlock");
+        }
+
 	/* NOTE: heap manager guarantees that a particular offset is used only
 	 * once at a time, so no collisions
 	 */
-	if (gvPutProcessItem(offset, state) == -1)
+	if (gvPutProcessStateItem(offset, state) == -1)
 	{
-	    THROW(e0, "gvPutProcessItem");
+	    THROW(e0, "gvPutProcessStateItem");
 	}
+
+        if (pthread_rwlock_unlock(&processStateLock) != 0)
+        {
+            THROW(e1, "pthread_rwlock_unlock");
+        }
     }
     CATCH (e0)
     {
 	return -1;
     }
-
-    return 0;
-}
-
-int
-gvDelThreadTransport()
-{
-    initIfNotDoneAlready();
-
-    TRY
+    CATCH (e1)
     {
-	if (gvDelThreadItem(THREAD_TRANSPORT_KEY) == -1)
-	{
-	    THROW(e0, "gvDelThreadItem");
-	}
-    }
-    CATCH (e0)
-    {
-	return -1;
+        /* Try to unlock. At this point we can't do anything if unlocking
+         * fails, so just ignore errors.
+         */
+        pthread_rwlock_unlock(&processStateLock);
+        return -1;
     }
 
     return 0;
 }
 
 GVtransportptr
-gvGetThreadTransport()
+gvGetCurrentThreadTransport()
 {
-    void *tempTransport;
+    GVtransportptr transport;
 
     initIfNotDoneAlready();
 
     TRY
     {
-	if ((tempTransport = gvGetThreadItem(THREAD_TRANSPORT_KEY)) == NULL)
+	if ((transport
+	     = (GVtransportptr) gvGetThreadStateItem(
+		 THREAD_TRANSPORT_KEY)) == NULL)
 	{
-	    THROW(e0, "gvGetThreadItem");
+	    THROW(e0, "gvGetThreadStateItem");
 	}
     }
     CATCH (e0)
@@ -132,20 +171,20 @@ gvGetThreadTransport()
 	return NULL;
     }
 
-    return (GVtransportptr) tempTransport;
+    return transport;
 }
 
 int
-gvSetThreadTransport(GVtransportptr transport)
+gvSetCurrentThreadTransport(GVtransportptr transport)
 {
     initIfNotDoneAlready();
 
     TRY
     {
 	/* NOTE: only set once per thread in concept 0, so no collisions */
-	if (gvPutThreadItem(THREAD_TRANSPORT_KEY, transport) == -1)
+	if (gvPutThreadStateItem(THREAD_TRANSPORT_KEY, transport) == -1)
 	{
-	    THROW(e0, "gvPutThreadItem");
+	    THROW(e0, "gvPutThreadStateItem");
 	}
     }
     CATCH (e0)

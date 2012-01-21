@@ -12,6 +12,8 @@
 #ifndef PROCESS_STATE_MAP_H_
 #define PROCESS_STATE_MAP_H_
 
+typedef void (*GVforeachfunc)(unsigned long int, void*, void*);
+
 /*! ***************************************************************************
  * \brief
  *
@@ -19,7 +21,7 @@
  * \return
  */
 int
-gvDelProcessItem(unsigned long int key);
+gvDelProcessStateItem(unsigned long int key);
 
 /*! ***************************************************************************
  * \brief
@@ -28,7 +30,18 @@ gvDelProcessItem(unsigned long int key);
  * \return
  */
 void
-*gvGetProcessItem(unsigned long int key);
+*gvGetProcessStateItem(unsigned long int key);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] func
+ * \param  [in] arg
+ * \return
+ */
+int
+gvForeachProcessStateItem(GVforeachfunc  func,
+			  void          *arg);
 
 /*! ***************************************************************************
  * \brief
@@ -38,7 +51,7 @@ void
  * \return
  */
 int
-gvPutProcessItem(unsigned long int  key,
-		 void              *value);
+gvPutProcessStateItem(unsigned long int  key,
+		      void              *value);
 
 #endif /* PROCESS_STATE_MAP_H_*/
