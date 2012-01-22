@@ -95,10 +95,10 @@ $(SL_TAR): $(SH_TAR) $(SL_OBJS)
 	ln -sf $(SL_BIN_REV) $(SL_BIN_LIB)
 
 dashboard: $(SH_TAR) $(SL_TAR)
-	$(CC) -Iinclude -Wl,-rpath,. -o gvdb src/dashboard.c $(SH_BIN_LIB) $(SL_BIN_LIB) -lncurses
+	$(CC) src/dashboard.c  -o gvdb $(SH_BIN_LIB) $(SL_BIN_LIB) -Iinclude -lncurses -Wl,-rpath,.
 
 democlient: $(CL_TAR)
-	$(CC) -Iinclude -Wl,-rpath,. -o gvdc src/democlient.c $(SH_BIN_LIB) $(CL_BIN_LIB)
+	$(CC) src/democlients/hello_triangle.c src/democlients/esUtil.c -o gvdc $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
 
 %.o: %.c
 	$(CC) -Iinclude $(CFLAGS) -c $< -o $@

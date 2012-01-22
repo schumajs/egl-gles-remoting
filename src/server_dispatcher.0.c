@@ -73,16 +73,18 @@ static void
 
 	while (1)
 	{
-	    printf("PID %i THREAD %ul IS LISTENING\n", getpid(), offsetState->thread);
+	    // printf("PID %i THREAD %ul IS LISTENING\n", getpid(), offsetState->thread);
+	    
 	    if ((cmdId = gvStartReceiving(transport, NULL)) == -1)
 	    {
 		THROW(e0, "gvStartReceiving");
 	    }
-	    printf("PID %i THREAD %ul GOT %i\n", getpid(), offsetState->thread, cmdId);
+
+	    // printf("PID %i THREAD %ul GOT %i\n", getpid(), offsetState->thread, cmdId);
 
 	    jumpTable[cmdId]();
 
-	    gvSleep(0, 1000);
+	    gvSleep(0, 500);
 	}
     }
     CATCH (e0)

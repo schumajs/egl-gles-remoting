@@ -22,6 +22,7 @@ gvCreateShm(size_t shmSize)
     int      fd;
     char     fileName[] = "/dev/shm/gvshm.XXXXXX";
     GVshmptr newShm;	
+
     TRY
     {
 	if ((fd = mkstemp(fileName)) == -1)

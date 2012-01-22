@@ -186,15 +186,13 @@ _eglChooseConfig()
     /* A - optional OUT pointer */
     if (configSize > 0)
     {
-	configs = malloc(configSize);
+	configs = malloc(configSize * sizeof(EGLConfig));
     }
     else
     {
 	configs = NULL;
     }
    
-    configs = malloc(configSize * sizeof(EGLConfig));
-
     status = eglChooseConfig(display, attribList, configs, configSize, &numConfig);
 
     free(attribList);
@@ -256,8 +254,7 @@ _eglCreateWindowSurface()
     surface = eglCreateWindowSurface(display, config, window, attribList);
 
     free(attribList);
-
-    gvStartSending(transport, NULL, callId);
+   gvStartSending(transport, NULL, callId);
     gvSendData(transport, &surface, sizeof(EGLSurface));
 }
 
@@ -384,7 +381,25 @@ _eglDestroyContext()
 void
 _eglMakeCurrent()
 {
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
+    GVcallid        callId;
+    EGLBoolean      status;
+    EGLDisplay      display;
+    EGLSurface      drawSurface;
+    EGLSurface      readSurface;
+    EGLContext      context;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &display, sizeof(EGLDisplay));
+    gvReceiveData(transport, &drawSurface, sizeof(EGLSurface));
+    gvReceiveData(transport, &readSurface, sizeof(EGLSurface));
+    gvReceiveData(transport, &context, sizeof(EGLContext));
+
+    status = eglMakeCurrent(display, drawSurface, readSurface, context);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &status, sizeof(EGLBoolean));
 }
 
 void
@@ -426,7 +441,21 @@ _eglWaitNative()
 void
 _eglSwapBuffers()
 {
+    GVtransportptr  transport = gvGetCurrentThreadTransport();
 
+    GVcallid        callId;
+    EGLBoolean      status;
+    EGLDisplay      display;
+    EGLSurface      surface;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &display, sizeof(EGLDisplay));
+    gvReceiveData(transport, &surface, sizeof(EGLSurface));
+
+    status = eglSwapBuffers(display, surface);
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &status, sizeof(EGLBoolean));
 }
 
 void
@@ -668,7 +697,7 @@ _glGetProgramiv()
     glGetProgramiv(program, pname, &params);
 
     gvStartSending(transport, NULL, callId);
-
+    gvSendData(transport, &params, sizeof(GLint));
 }
 
 void
@@ -774,7 +803,7 @@ _glUseProgram()
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &program, sizeof(GLuint));
 
-    glUseProgram(program);
+    glUseProgram(program);   
 }
 
 void
@@ -798,7 +827,7 @@ _glVertexAttribPointer()
 
     TRY
     {
-	GVvertexattribptr vertexAttrib;
+	GVvertexattribptr vertexAttrib = NULL;
 	
 	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
 	{
@@ -855,7 +884,7 @@ _glDrawArrays()
 
     TRY
     {
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
 	{
 	    THROW(e0, "gvGetCurrentVertexAttrib");
 	}

@@ -408,7 +408,7 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 		restLength = restLength - dataLength;
 	    }
 
-	    gvSleep(0, 1000);
+	    gvSleep(0, 500);
 	}
 
     }
@@ -495,7 +495,7 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 		restLength = restLength - spaceLength;
 	    }
 
-	    gvSleep(0, 1000);
+	    gvSleep(0, 500);
 	}
     }
     CATCH (e0)

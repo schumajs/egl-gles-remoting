@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    egl.0.c
+ * \file    client_egl_gles.0.c
  * \brief   
  * 
  * \date    January 9, 2012
@@ -16,6 +16,7 @@
 #include <string.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <X11/Xlib.h>
 
 #include "client_serializer.h"
 #include "client_state_tracker.0.h"
@@ -23,10 +24,10 @@
 #include "heap_manager.h"
 #include "janitor.h"
 
-#define TRANSPORT_LENGTH 11 * 4096
+#define TRANSPORT_LENGTH 3 * 4096
 
-#define DEFAULT_DISPLAY  (void *)0
-#define DEFAULT_CONTEXT  (void *)0
+#define DEFAULT_DISPLAY  (void *)1
+#define DEFAULT_CONTEXT  (void *)1
 
 extern char            **environ;
 
@@ -253,6 +254,8 @@ getAttribListSize(const EGLint *attribList)
 	{
 	    attribListSize++;
 	}
+
+	attribListSize++;
     }
     
     return attribListSize;
@@ -696,6 +699,19 @@ eglMakeCurrent(EGLDisplay display,
     initProcessIfNotDoneAlready();
     initThreadIfNotDoneAlready();
 
+    TRY
+    {
+	if (makeCurrent(display, context) == -1)
+	{
+	    THROW(e0, "makeCurrent");
+	}
+    }
+    CATCH (e0)
+    {
+	/* TODO reset transport */
+	return EGL_FALSE;
+    }
+
     transport = gvGetCurrentThreadTransport();
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_MAKECURRENT);
@@ -707,19 +723,9 @@ eglMakeCurrent(EGLDisplay display,
     gvStartReceiving(transport, NULL, callId);
     gvReceiveData(transport, &status, sizeof(EGLBoolean));
 
-    if (status == EGL_TRUE)
+    if (status == EGL_FALSE)
     {
-	TRY
-	{
-	    if (makeCurrent(display, context) == -1)
-	    {
-		THROW(e0, "makeCurrent");
-	    }
-	}
-	CATCH (e0)
-	{
-	    return EGL_FALSE;
-	}
+	/* TODO reset transport */
     }
 
     return EGL_TRUE;
@@ -768,7 +774,24 @@ EGLBoolean
 eglSwapBuffers(EGLDisplay display,
 	       EGLSurface surface)
 {
-    return 1;
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    EGLBoolean      status;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_SWAPBUFFERS);
+    gvSendData(transport, &display, sizeof(EGLDisplay));
+    gvSendData(transport, &surface, sizeof(EGLSurface));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &status, sizeof(EGLBoolean));
+
+    return status;
 }
 
 EGLBoolean
@@ -1093,8 +1116,8 @@ glViewport(GLint   x,
 {
     GVtransportptr  transport;
 
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1110,8 +1133,8 @@ glClear(GLbitfield mask)
 {
     GVtransportptr  transport;
 
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1123,9 +1146,8 @@ void
 glUseProgram(GLuint program)
 {
     GVtransportptr  transport;
-
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1142,10 +1164,10 @@ glVertexAttribPointer(GLuint        indx,
 		      const GLvoid *ptr)
 {
     GVtransportptr    transport;
-    GVvertexattribptr vertexAttrib;
+    GVvertexattribptr vertexAttrib = NULL;
 
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     TRY
     {
@@ -1191,8 +1213,8 @@ glEnableVertexAttribArray(GLuint index)
 {
     GVtransportptr  transport;
 
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1208,12 +1230,12 @@ glDrawArrays(GLenum  mode,
     GVtransportptr    transport;
     GVvertexattribptr vertexAttrib;
 
-    initProcessIfNotDoneAlready();
-    initThreadIfNotDoneAlready();
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
 
     TRY
     {
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
 	{
 	    THROW(e0, "gvGetCurrentVertexAttrib");
 	}
