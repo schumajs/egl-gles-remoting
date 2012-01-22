@@ -1226,7 +1226,7 @@ glDrawArrays(GLenum  mode,
     transport = gvGetCurrentThreadTransport();
 
     size_t sizeofComponentType;
-    switch (vertexAttrib->size)
+    switch (vertexAttrib->type)
     {
     case GL_BYTE:
 	sizeofComponentType = sizeof(GLbyte);
