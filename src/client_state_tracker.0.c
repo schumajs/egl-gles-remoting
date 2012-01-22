@@ -20,9 +20,10 @@
  * Client state tracker implementation
  */
 
-#define CURRENT_DISPLAY_KEY   0x0
-#define CURRENT_CONTEXT_KEY   0x0
-#define CURRENT_TRANSPORT_KEY 0x1
+#define CURRENT_DISPLAY_KEY      0x0
+#define CURRENT_CONTEXT_KEY      0x1
+#define CURRENT_TRANSPORT_KEY    0x2
+#define CURRENT_VERTEXATTRIB_KEY 0x3
 
 static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
 static int              threadStateMapInitiated = 0;
@@ -552,3 +553,49 @@ gvSetCurrentThreadTransport(GVtransportptr transport)
 
     return 0;
 }
+
+GVvertexattribptr
+gvGetCurrentVertexAttrib()
+{
+    GVvertexattribptr vertexAttrib;
+
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	if ((vertexAttrib
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 CURRENT_VERTEXATTRIB_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return NULL;
+    }
+
+    return vertexAttrib;
+}
+
+int
+gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib)
+{
+    initIfNotDoneAlready();
+
+    TRY
+    {
+	/* NOTE: only set once per thread in concept 0, so no collisions */
+	if (gvPutThreadStateItem(CURRENT_VERTEXATTRIB_KEY, vertexAttrib) == -1)
+	{
+	    THROW(e0, "gvPutThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+

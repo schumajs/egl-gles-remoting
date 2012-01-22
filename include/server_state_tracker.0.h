@@ -14,6 +14,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <GLES2/gl2.h>
 
 #include "transport.h"
 
@@ -23,6 +24,16 @@ struct GVoffsetstate {
 };
 
 typedef struct GVoffsetstate *GVoffsetstateptr;
+
+struct GVvertexattrib {
+    GLuint        index;
+    GLint         size;
+    GLenum        type;
+    GLboolean     normalized;
+    GLsizei       stride;
+};
+
+typedef struct GVvertexattrib *GVvertexattribptr;
 
 /*! ***************************************************************************
  * \brief
@@ -69,5 +80,22 @@ gvGetCurrentThreadTransport(void);
  */
 int
 gvSetCurrentThreadTransport(GVtransportptr transport);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \return
+ */
+GVvertexattribptr
+gvGetCurrentVertexAttrib(void);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] vertexAttrib
+ * \return
+ */
+int
+gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib);
 
 #endif /* SERVER_STATE_TRACKER_0_H_ */

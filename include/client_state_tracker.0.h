@@ -13,6 +13,7 @@
 #define CLIENT_STATE_TRACKER_H_
 
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
 
 #include "transport.h" 
 
@@ -32,6 +33,17 @@ struct GVcontextstate {
 typedef struct GVcontextstate *GVcontextstateptr;
 
 typedef void (*GVforeachcontextfunc)(GVcontextstateptr, void*);
+
+struct GVvertexattrib {
+    GLuint        index;
+    GLint         size;
+    GLenum        type;
+    GLboolean     normalized;
+    GLsizei       stride;
+    const GLvoid *ptr;
+};
+
+typedef struct GVvertexattrib *GVvertexattribptr;
 
 /*! ***************************************************************************
  * \brief
@@ -188,5 +200,22 @@ gvGetCurrentThreadTransport(void);
  */
 int
 gvSetCurrentThreadTransport(GVtransportptr transport);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \return
+ */
+GVvertexattribptr
+gvGetCurrentVertexAttrib(void);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] vertexAttrib
+ * \return
+ */
+int
+gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib);
 
 #endif /* CLIENT_STATE_TRACKER_H_*/

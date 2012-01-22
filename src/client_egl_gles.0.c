@@ -1084,3 +1084,175 @@ glClearColor(GLclampf red,
     gvSendData(transport, &blue, sizeof(GLclampf));
     gvSendData(transport, &alpha, sizeof(GLclampf));
 }
+
+void
+glViewport(GLint   x,
+	   GLint   y,
+	   GLsizei width,
+	   GLsizei height)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_VIEWPORT);
+    gvSendData(transport, &x, sizeof(GLint));
+    gvSendData(transport, &y, sizeof(GLint));
+    gvSendData(transport, &width, sizeof(GLsizei));
+    gvSendData(transport, &height, sizeof(GLsizei));
+}
+
+void
+glClear(GLbitfield mask)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_CLEAR);
+    gvSendData(transport, &mask, sizeof(GLbitfield));
+}
+
+void
+glUseProgram(GLuint program)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_USEPROGRAM);
+    gvSendData(transport, &program, sizeof(GLuint));
+}
+
+void
+glVertexAttribPointer(GLuint        indx,
+		      GLint         size,
+		      GLenum        type,
+		      GLboolean     normalized,
+		      GLsizei       stride,
+		      const GLvoid *ptr)
+{
+    GVtransportptr    transport;
+    GVvertexattribptr vertexAttrib;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    TRY
+    {
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	{
+	    free(vertexAttrib);
+	}
+
+	if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	vertexAttrib->index       = indx;
+	vertexAttrib->size        = size;
+	vertexAttrib->type        = type;
+	vertexAttrib->normalized  = normalized;
+	vertexAttrib->stride      = stride;
+	vertexAttrib->ptr         = ptr;
+	
+	if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
+	{
+	    THROW(e0, "gvSetCurrentVertexAttrib");
+	}
+    }
+    CATCH (e0)
+    {
+	return;
+    }
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_VERTEXATTRIBPOINTER);
+    gvSendData(transport, &indx, sizeof(GLuint));
+    gvSendData(transport, &size, sizeof(GLint));
+    gvSendData(transport, &type, sizeof(GLenum));
+    gvSendData(transport, &normalized, sizeof(GLboolean));
+    gvSendData(transport, &stride, sizeof(GLsizei));
+}
+
+void
+glEnableVertexAttribArray(GLuint index)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_ENABLEVERTEXATTRIBARRAY);
+    gvSendData(transport, &index, sizeof(GLuint));
+}
+
+void
+glDrawArrays(GLenum  mode,
+	     GLint   first,
+	     GLsizei count)
+{
+    GVtransportptr    transport;
+    GVvertexattribptr vertexAttrib;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    TRY
+    {
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	{
+	    THROW(e0, "gvGetCurrentVertexAttrib");
+	}
+    }
+    CATCH (e0)
+    {
+	return;
+    }
+
+    transport = gvGetCurrentThreadTransport();
+
+    size_t sizeofComponentType;
+    switch (vertexAttrib->size)
+    {
+    case GL_BYTE:
+	sizeofComponentType = sizeof(GLbyte);
+	break;
+    case GL_UNSIGNED_BYTE:
+	sizeofComponentType = sizeof(GLubyte);
+	break;
+    case GL_SHORT:
+	sizeofComponentType = sizeof(GLshort);
+	break;
+    case GL_UNSIGNED_SHORT:
+	sizeofComponentType = sizeof(GLushort);
+	break;
+    case GL_FIXED:
+	sizeofComponentType = sizeof(GLfixed);
+	break;
+    case GL_FLOAT:
+	sizeofComponentType = sizeof(GLfloat);
+	break;
+    }
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_DRAWARRAYS);
+    gvSendData(transport, &mode, sizeof(GLenum));
+    gvSendData(transport, &first, sizeof(GLint));
+    gvSendData(transport, &count, sizeof(GLsizei));
+    gvSendVarSizeData(transport,
+		      vertexAttrib->ptr,
+		      count * vertexAttrib->size * sizeofComponentType);
+}

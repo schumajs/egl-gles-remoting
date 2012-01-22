@@ -83,6 +83,12 @@ typedef int GVcallid;
 #define GV_CMDID_GLES2_GETPROGRAMINFOLOG           0x36
 #define GV_CMDID_GLES2_DELETEPROGRAM               0x37
 #define GV_CMDID_GLES2_CLEARCOLOR                  0x38
+#define GV_CMDID_GLES2_VIEWPORT                    0x39
+#define GV_CMDID_GLES2_CLEAR                       0x3a
+#define GV_CMDID_GLES2_USEPROGRAM                  0x3b
+#define GV_CMDID_GLES2_VERTEXATTRIBPOINTER         0x3c
+#define GV_CMDID_GLES2_ENABLEVERTEXATTRIBARRAY     0x3d
+#define GV_CMDID_GLES2_DRAWARRAYS                  0x3e
 
 /*! ***************************************************************************
  * \brief

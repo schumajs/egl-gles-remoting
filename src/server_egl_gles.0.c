@@ -729,12 +729,165 @@ _glClearColor()
     glClearColor(red, green, blue, alpha);
 }
 
+void
+_glViewport()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLint          x;
+    GLint          y;
+    GLsizei        width;
+    GLsizei        height;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &x, sizeof(GLint));
+    gvReceiveData(transport, &y, sizeof(GLint));
+    gvReceiveData(transport, &width, sizeof(GLsizei));
+    gvReceiveData(transport, &height, sizeof(GLsizei));
+
+    glViewport(x, y, width, height);
+}
+
+void
+_glClear()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLbitfield     mask;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &mask, sizeof(GLbitfield));
+
+    glClear(mask);
+}
+
+void
+_glUseProgram()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         program;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &program, sizeof(GLuint));
+
+    glUseProgram(program);
+}
+
+void
+_glVertexAttribPointer()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         index;
+    GLint          size;
+    GLenum         type;
+    GLboolean      normalized;
+    GLsizei        stride;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &index, sizeof(GLuint));
+    gvReceiveData(transport, &size, sizeof(GLint));
+    gvReceiveData(transport, &type, sizeof(GLenum));
+    gvReceiveData(transport, &normalized, sizeof(GLboolean));
+    gvReceiveData(transport, &stride, sizeof(GLsizei));
+
+    TRY
+    {
+	GVvertexattribptr vertexAttrib;
+	
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	{
+	    free(vertexAttrib);
+	}
+
+	if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	vertexAttrib->index       = index;
+	vertexAttrib->size        = size;
+	vertexAttrib->type        = type;
+	vertexAttrib->normalized  = normalized;
+	vertexAttrib->stride      = stride;
+	
+	if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
+	{
+	    THROW(e0, "gvSetCurrentVertexAttrib");
+	}
+    }
+    CATCH (e0)
+    {
+	return;
+    }
+}
+
+void
+_glEnableVertexAttribArray()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLuint         index;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &index, sizeof(GLuint));
+
+    glEnableVertexAttribArray(index);
+}
+
+void
+_glDrawArrays()
+{
+    GVtransportptr     transport = gvGetCurrentThreadTransport();
+    GVvertexattribptr  vertexAttrib;
+
+    GVcallid           callId;
+    GLenum             mode;
+    GLint              first;
+    GLsizei            count;
+    GLvoid            *ptr;
+
+    TRY
+    {
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	{
+	    THROW(e0, "gvGetCurrentVertexAttrib");
+	}
+    }
+    CATCH (e0)
+    {
+	return;
+    }
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+    gvReceiveData(transport, &mode, sizeof(GLenum));
+    gvReceiveData(transport, &first, sizeof(GLint));
+    gvReceiveData(transport, &count, sizeof(GLsizei));
+    ptr = (GLvoid *)gvReceiveVarSizeData(transport);
+
+    glVertexAttribPointer(vertexAttrib->index,
+			  vertexAttrib->size,
+			  vertexAttrib->type,
+			  vertexAttrib->normalized,
+			  vertexAttrib->stride,
+			  ptr);
+
+    free(ptr);
+
+    glDrawArrays(mode, first, count);
+}
 
 /* ****************************************************************************
  * Jump table
  */
 
-GVdispatchfunc eglGlesJumpTable[43] = {
+GVdispatchfunc eglGlesJumpTable[63] = {
     _notInUse,
     _notInUse,
     _notInUse,
@@ -777,5 +930,25 @@ GVdispatchfunc eglGlesJumpTable[43] = {
     _eglWaitGL,
     _eglWaitNative,
     _eglSwapBuffers,
-    _eglCopyBuffers
+    _eglCopyBuffers,
+    _glCreateShader,
+    _glShaderSource,
+    _glCompileShader,
+    _glGetShaderiv,
+    _glGetShaderInfoLog,
+    _glDeleteShader,
+    _glCreateProgram,
+    _glAttachShader,
+    _glBindAttribLocation,
+    _glLinkProgram,
+    _glGetProgramiv,
+    _glGetProgramInfoLog,
+    _glDeleteProgram,
+    _glClearColor,
+    _glViewport,
+    _glClear,
+    _glUseProgram,
+    _glVertexAttribPointer,
+    _glEnableVertexAttribArray,
+    _glDrawArrays
 };
