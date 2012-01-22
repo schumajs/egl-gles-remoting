@@ -822,7 +822,7 @@ glShaderSource(GLuint         shader,
     gvSendData(transport, &shader, sizeof(GLuint));
     gvSendData(transport, &count, sizeof(GLsizei));
 
-    /* There are several possibilities to pass "string", see spec. p. 27 */
+    /* There are several ways to pass "string", see spec. p. 27 */
     if (length == NULL)
     {
 	int passingType = 0;
