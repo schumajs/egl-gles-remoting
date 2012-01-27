@@ -818,36 +818,34 @@ _glVertexAttribPointer()
     GLboolean      normalized;
     GLsizei        stride;
 
-    gvReceiveData(transport, &callId, sizeof(GVcallid));
-    gvReceiveData(transport, &index, sizeof(GLuint));
-    gvReceiveData(transport, &size, sizeof(GLint));
-    gvReceiveData(transport, &type, sizeof(GLenum));
-    gvReceiveData(transport, &normalized, sizeof(GLboolean));
-    gvReceiveData(transport, &stride, sizeof(GLsizei));
-
     TRY
     {
 	GVvertexattribptr vertexAttrib = NULL;
 	
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
 	{
-	    free(vertexAttrib);
-	}
+	    gvReceiveData(transport, &callId, sizeof(GVcallid));
+	    gvReceiveData(transport, &index, sizeof(GLuint));
+	    gvReceiveData(transport, &size, sizeof(GLint));
+	    gvReceiveData(transport, &type, sizeof(GLenum));
+	    gvReceiveData(transport, &normalized, sizeof(GLboolean));
+	    gvReceiveData(transport, &stride, sizeof(GLsizei));
 
-	if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
+	    if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
+	    {
+		THROW(e0, "malloc");
+	    }
 
-	vertexAttrib->index       = index;
-	vertexAttrib->size        = size;
-	vertexAttrib->type        = type;
-	vertexAttrib->normalized  = normalized;
-	vertexAttrib->stride      = stride;
+	    vertexAttrib->index       = index;
+	    vertexAttrib->size        = size;
+	    vertexAttrib->type        = type;
+	    vertexAttrib->normalized  = normalized;
+	    vertexAttrib->stride      = stride;
 	
-	if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
-	{
-	    THROW(e0, "gvSetCurrentVertexAttrib");
+	    if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
+	    {
+		THROW(e0, "gvSetCurrentVertexAttrib");
+	    }
 	}
     }
     CATCH (e0)

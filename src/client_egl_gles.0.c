@@ -1171,41 +1171,39 @@ glVertexAttribPointer(GLuint        indx,
 
     TRY
     {
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) != NULL)
+	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
 	{
-	    free(vertexAttrib);
-	}
+	    if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
+	    {
+		THROW(e0, "malloc");
+	    }
 
-	if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
-	vertexAttrib->index       = indx;
-	vertexAttrib->size        = size;
-	vertexAttrib->type        = type;
-	vertexAttrib->normalized  = normalized;
-	vertexAttrib->stride      = stride;
-	vertexAttrib->ptr         = ptr;
+	    vertexAttrib->index       = indx;
+	    vertexAttrib->size        = size;
+	    vertexAttrib->type        = type;
+	    vertexAttrib->normalized  = normalized;
+	    vertexAttrib->stride      = stride;
+	    vertexAttrib->ptr         = ptr;
 	
-	if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
-	{
-	    THROW(e0, "gvSetCurrentVertexAttrib");
+	    if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
+	    {
+		THROW(e0, "gvSetCurrentVertexAttrib");
+	    }
+
+	    transport = gvGetCurrentThreadTransport();
+
+	    gvStartSending(transport, NULL, GV_CMDID_GLES2_VERTEXATTRIBPOINTER);
+	    gvSendData(transport, &indx, sizeof(GLuint));
+	    gvSendData(transport, &size, sizeof(GLint));
+	    gvSendData(transport, &type, sizeof(GLenum));
+	    gvSendData(transport, &normalized, sizeof(GLboolean));
+	    gvSendData(transport, &stride, sizeof(GLsizei));
 	}
     }
     CATCH (e0)
     {
 	return;
     }
-
-    transport = gvGetCurrentThreadTransport();
-
-    gvStartSending(transport, NULL, GV_CMDID_GLES2_VERTEXATTRIBPOINTER);
-    gvSendData(transport, &indx, sizeof(GLuint));
-    gvSendData(transport, &size, sizeof(GLint));
-    gvSendData(transport, &type, sizeof(GLenum));
-    gvSendData(transport, &normalized, sizeof(GLboolean));
-    gvSendData(transport, &stride, sizeof(GLsizei));
 }
 
 void
