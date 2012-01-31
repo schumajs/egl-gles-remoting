@@ -8,7 +8,7 @@
 #   clientlib 
 #   serverlib
 #   dashboard
-#   democlient
+#   eval*
 
 ###############################################################################
 # Archiver / compiler / linker
@@ -51,6 +51,10 @@ SL_C1_OBJS  :=
 ###############################################################################
 # Conditionals and rules
 
+#
+# Get concept source files
+#
+
 ifndef CONCEPT
 	CONCEPT := 0
 endif
@@ -75,45 +79,91 @@ SH_BIN_LIB := lib$(SH_BIN)
 SH_BIN_MAJ := $(SH_BIN_LIB).so.$(VER_MAJ)
 SH_BIN_REV := $(SH_BIN_MAJ).$(VER_MIN).$(VER_REV)
 
-all: $(SH_TAR) $(CL_TAR) $(SL_TAR) dashboard democlient
+#
+# Use -fPIC flag for shared, client and server so's
+#
 
 $(CL_TAR) $(SL_TAR) $(SH_TAR): CFLAGS += -fPIC
+
+#
+# All
+#
+
+all: $(SH_TAR) $(CL_TAR) $(SL_TAR) dashboard eval1
+
+#
+# Phony
+#
+
+.PHONY: clean cleanall docs
+
+#
+# Shared lib
+#
 
 $(SH_TAR): $(SH_OBJS)
 	$(CC) -shared -Wl,-soname,$(SH_BIN_MAJ) -o $(SH_BIN_REV) $(SH_OBJS) -lpthread -lvrb
 	ln -sf $(SH_BIN_REV) $(SH_BIN_MAJ)
 	ln -sf $(SH_BIN_REV) $(SH_BIN_LIB)
 
+#
+# Client lib
+#
+
 $(CL_TAR): $(SH_TAR) $(CL_OBJS)
 	$(CC) -shared -Wl,-rpath,.,-soname,$(CL_BIN_MAJ) -o $(CL_BIN_REV) $(CL_OBJS) $(SH_BIN_LIB)
 	ln -sf $(CL_BIN_REV) $(CL_BIN_MAJ)
 	ln -sf $(CL_BIN_REV) $(CL_BIN_LIB)
+
+#
+# Server lib
+#
 
 $(SL_TAR): $(SH_TAR) $(SL_OBJS)
 	$(CC) -shared -Wl,-rpath,.,-soname,$(SL_BIN_MAJ) -o $(SL_BIN_REV) $(SL_OBJS) $(SH_BIN_LIB) -ldlmalloc -lEGL -lGLESv2
 	ln -sf $(SL_BIN_REV) $(SL_BIN_MAJ)
 	ln -sf $(SL_BIN_REV) $(SL_BIN_LIB)
 
+#
+# Dashboard
+#
+
 dashboard: $(SH_TAR) $(SL_TAR)
 	$(CC) src/dashboard.c  -o gvdb $(SH_BIN_LIB) $(SL_BIN_LIB) -Iinclude -lncurses -Wl,-rpath,.
 
-democlient: $(CL_TAR)
-	$(CC) src/democlients/hello_triangle.c src/democlients/esUtil.c -o gvdc $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
+#
+# Evaluation
+#
+
+EVAL_OBJS := src/evaluation
+
+eval1: $(CL_TAR)
+	$(CC) $(EVAL_OBJS)/eval1.c $(EVAL_OBJS)/eval_util.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
+
+#
+# Compilation
+#
 
 %.o: %.c
 	$(CC) -Iinclude $(CFLAGS) -c $< -o $@
 
-.PHONY: clean cleanall docs
+#
+# Cleansing
+#
 
 clean:
 	rm -f $(SH_OBJS) $(SH_BIN_LIB) $(SH_BIN_MAJ) $(SH_BIN_REV) 
 	rm -f $(CL_OBJS) $(CL_BIN_LIB) $(CL_BIN_MAJ) $(CL_BIN_REV) 
 	rm -f $(SL_OBJS) $(SL_BIN_LIB) $(SL_BIN_MAJ) $(SL_BIN_REV) 
 	rm -f src/dashboard.o gvdb
-	rm -f src/gvdc.o gvdc
+	rm -f src/evaluation/eval*.o eval*
 
 cleanall: clean
 	rm -R docs
+
+#
+# Docs
+#
 
 docs:
 	doxygen default.doxygen

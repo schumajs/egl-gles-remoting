@@ -18,20 +18,18 @@
 #include "transport.h"
 #include "shared_memory.h"
 
-extern char           **environ;
+static int            processInitiated = 0;
 
-static int              processInitiated = 0;
-
-static GVtransportptr   transport;
-static GVlockptr        callLock;
-static GVlockptr        returnLock;
+static GVtransportptr transport;
+static GVlockptr      callLock;
+static GVlockptr      returnLock;
 
 static int
 initHeapMgrClient()
 {    
     GVshmptr heapMgrShm;
-    int      heapMgrShmFd   = atoi(environ[2]);
-    int      heapMgrShmSize = atoi(environ[3]);
+    int      heapMgrShmFd   = atoi(getenv("GV_HMGR_SHM_FD"));
+    int      heapMgrShmSize = atoi(getenv("GV_HMGR_SHM_SIZE"));
     
     TRY
     {

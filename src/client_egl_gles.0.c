@@ -29,12 +29,10 @@
 #define DEFAULT_DISPLAY  (void *)1
 #define DEFAULT_CONTEXT  (void *)1
 
-extern char            **environ;
+static GVshmptr         vmShm;
 
-static GVshmptr          vmShm;
-
-static int               processInitiated = 0;
-static pthread_mutex_t   initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
+static int              processInitiated = 0;
+static pthread_mutex_t  initProcessLock  = PTHREAD_MUTEX_INITIALIZER;
 
 static int
 createContext(EGLDisplay display, EGLContext context)
@@ -147,8 +145,8 @@ makeCurrent(EGLDisplay newDisplay, EGLContext newContext)
 static int
 initEglGlesClient()
 {
-    int vmShmFd    = atoi(environ[0]);
-    int vmShmSize  = atoi(environ[1]);
+    int vmShmFd    = atoi(getenv("GV_VM_SHM_FD"));
+    int vmShmSize  = atoi(getenv("GV_VM_SHM_SIZE"));
 
     TRY
     {
@@ -324,8 +322,20 @@ eglInitialize(EGLDisplay  display,
 
     gvStartReceiving(transport, NULL, callId);
     gvReceiveData(transport, &status, sizeof(EGLBoolean));
-    gvReceiveData(transport, major, sizeof(EGLint));
-    gvReceiveData(transport, minor, sizeof(EGLint));
+    
+    /* TODO avoid being sent back */
+    int majorTemp;
+    gvReceiveData(transport, &majorTemp, sizeof(EGLint));
+    if (major != NULL)
+    {
+	*major = majorTemp;
+    }
+    int minorTemp;
+    gvReceiveData(transport, &minorTemp, sizeof(EGLint));
+    if (minor != NULL)
+    {
+	*minor = minorTemp;
+    }
 
     return status;
 }
@@ -409,7 +419,7 @@ eglGetConfigs(EGLDisplay display,
     gvReceiveData(transport, numConfig, sizeof(EGLint));
 
     /* B - Optional OUT pointer */
-    if (configs != NULL)
+    if (configs != NULL && *numConfig > 0)
     {
         gvReceiveData(transport, configs, *numConfig * sizeof(EGLConfig));
     }
@@ -452,7 +462,7 @@ eglChooseConfig(EGLDisplay    display,
     gvReceiveData(transport, numConfig, sizeof(EGLint));
 
     /* B - Optional OUT pointer */
-    if (configs != NULL)
+    if (configs != NULL && *numConfig > 0)
     {
         gvReceiveData(transport, configs, *numConfig * sizeof(EGLConfig));
     }
@@ -476,7 +486,7 @@ eglGetConfigAttrib(EGLDisplay  display,
 
     transport = gvGetCurrentThreadTransport();
 
-    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CHOOSECONFIG);
+    callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETCONFIGATTRIB);
     gvSendData(transport, &display, sizeof(EGLDisplay));
     gvSendData(transport, &config, sizeof(EGLConfig));
     gvSendData(transport, &attribute, sizeof(EGLint));

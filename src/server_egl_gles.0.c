@@ -176,7 +176,7 @@ _eglChooseConfig()
     EGLint         *attribList;
     EGLConfig      *configs;
     EGLint          configSize;
-    EGLint          numConfig;
+    EGLint          numConfig = 0;
 
     gvReceiveData(transport, &callId, sizeof(GVcallid));
     gvReceiveData(transport, &display, sizeof(EGLDisplay));
@@ -192,7 +192,7 @@ _eglChooseConfig()
     {
 	configs = NULL;
     }
-   
+
     status = eglChooseConfig(display, attribList, configs, configSize, &numConfig);
 
     free(attribList);
@@ -202,9 +202,9 @@ _eglChooseConfig()
     gvSendData(transport, &numConfig, sizeof(EGLint));
 
     /* B - optional OUT pointer */
-    if (configSize > 0)
+    if (configSize > 0 && numConfig > 0)
     {
-	gvSendData(transport, configs, numConfig * sizeof(EGLConfig));	
+	gvSendData(transport, configs, numConfig * sizeof(EGLConfig));
 	free(configs);
     }
 }

@@ -18,20 +18,18 @@
 #include "transport.h"
 #include "shared_memory.h"
 
-extern char           **environ;
+static int            processInitiated = 0;
 
-static int              processInitiated = 0;
-
-static GVtransportptr   transport;
-static GVlockptr        callLock;
-static GVlockptr        returnLock;
+static GVtransportptr transport;
+static GVlockptr      callLock;
+static GVlockptr      returnLock;
 
 static int
 initJanitorClient()
 {    
     GVshmptr janitorShm;
-    int      janitorShmFd   = atoi(environ[4]);
-    int      janitorShmSize = atoi(environ[5]);
+    int      janitorShmFd   = atoi(getenv("GV_JANITOR_SHM_FD"));
+    int      janitorShmSize = atoi(getenv("GV_JANITOR_SHM_SIZE"));
     
     TRY
     {
