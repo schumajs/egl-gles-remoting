@@ -184,12 +184,15 @@ static int systemPageSize = 4096;
 	       tempLock, sizeof(GVlock));		\
 	memcpy(&returnBuffer->inShmPart->serverLock,	\
 	       tempLock, sizeof(GVlock));		\
-							\
+	free(tempLock);					\
+    } while(0)
+/* TODO Check what's wrong with this*/
+/*							\
 	if (gvDestroyLock(tempLock) == -1)		\
 	{						\
 	    THROW(e0, "gvDestroyLock");			\
 	}						\
-    } while(0)
+*/
 
 /** ***************************************************************************
  */

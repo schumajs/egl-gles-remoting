@@ -24,7 +24,7 @@
 #include "heap_manager.h"
 #include "janitor.h"
 
-#define TRANSPORT_LENGTH 3 * 4096
+#define TRANSPORT_LENGTH 12288 // (3 * 4096)
 
 #define DEFAULT_DISPLAY  (void *)1
 #define DEFAULT_CONTEXT  (void *)1

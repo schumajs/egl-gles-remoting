@@ -9,6 +9,8 @@
  * \details
  */
 
+#include <stdlib.h>
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
@@ -16,77 +18,38 @@
 #include "error.h"
 #include "eval_util.h"
 
-EGLNativeWindowType
-createEglNativeWindow(const char *winTitle,
-		      int         winWidth,
-		      int         winHeight)
-{
-    Display             *disp;
-    Window               root;
-    Window               win;
-    XSetWindowAttributes winAttribs;
+struct GVdisplay {
+    EGLDisplay  eglDisplay;
+    EGLConfig   eglDisplayConfig;
+    Display    *xDisplay;
+};
 
-    TRY
+struct GVwindow {
+    EGLNativeWindowType eglNativeWindowHandle;
+    EGLSurface          eglWindow;
+    Window              xWindow;
+};
+
+static int
+interrupted(Display *xDisplay)
+{
+    int     interrupted = 0;
+    XEvent  xEvent;
+
+    while (XPending(xDisplay))
     {
-	if ((disp = XOpenDisplay(NULL)) == NULL)
+        XNextEvent(xDisplay, &xEvent);
+        if (xEvent.type == DestroyNotify)
 	{
-	    THROW(e0, "XOpenDisplay");
+	    interrupted = 1;
 	}
     }
-    CATCH (e0)
-    {
-	return -1;
-    }
 
-    root = DefaultRootWindow(disp);
-
-    winAttribs.event_mask = ExposureMask | PointerMotionMask | KeyPressMask;
-
-    win = XCreateWindow(disp, root,
-			0, 0,
-			winWidth, winHeight,
-			0,
-			CopyFromParent,
-			InputOutput,
-			CopyFromParent,
-			CWEventMask,
-			&winAttribs);
-
-    XMapWindow(disp, win);
-    XStoreName(disp, win, winTitle);
-    XFlush(disp);
-
-    return (EGLNativeWindowType) win;
+    return interrupted;
 }
 
-EGLDisplay
-createEglDisplay()
-{
-    EGLDisplay display;
-
-    TRY
-    {
-	if (!(display = eglGetDisplay(EGL_DEFAULT_DISPLAY)))
-	{
-	    THROW(e0, "eglGetDisplay");
-	}
-
-	if (!eglInitialize(display, NULL, NULL))
-	{
-	    THROW(e0, "eglInitialize");
-	}
-    }
-    CATCH (e0)
-    {
-	return NULL;
-    }
-
-    return display;
-}
-
-
-EGLConfig
-createEglConfig(EGLDisplay display)
+GVdisplayptr
+createDisplay()
 {
     static const EGLint attribList[] = {
 	EGL_RED_SIZE, 1,
@@ -97,12 +60,35 @@ createEglConfig(EGLDisplay display)
 	EGL_NONE
     };
 
-    EGLConfig config;
-    EGLint    numConfigs;
+    GVdisplayptr display;
+
+    EGLConfig  config;
+    EGLint     numConfigs;
 
     TRY
     {
-	if (!eglChooseConfig(display, attribList, config, 1, &numConfigs))
+	if ((display = malloc(sizeof(struct GVdisplay))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	if ((display->xDisplay = XOpenDisplay(NULL)) == NULL)
+	{
+	    THROW(e0, "XOpenDisplay");
+	}
+
+	if (!(display->eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY)))
+	{
+	    THROW(e0, "eglGetDisplay");
+	}
+
+	if (!eglInitialize(display->eglDisplay, NULL, NULL))
+	{
+	    THROW(e0, "eglInitialize");
+	}
+
+	if (!eglChooseConfig(display->eglDisplay, attribList,
+			     &display->eglDisplayConfig, 1, &numConfigs))
 	{
 	    THROW(e0, "eglChooseConfig");
 	}
@@ -112,21 +98,53 @@ createEglConfig(EGLDisplay display)
 	return NULL;
     }
 
-    return config;
+    return display;
 }
 
-EGLSurface
-createEglWindowSurface(EGLDisplay          display,
-		       EGLConfig           config,
-		       EGLNativeWindowType nativeWin)
+GVwindowptr
+createWindow(GVdisplayptr  display,
+	     const char   *winTitle,
+	     int           winWidth,
+	     int           winHeight)
 {
-    EGLSurface surface;
+    GVwindowptr            window;
+
+    Window               xRootWindow;
+    XSetWindowAttributes xWindowAttribs;
+
+    xWindowAttribs.event_mask = ExposureMask | PointerMotionMask | KeyPressMask;
 
     TRY
     {
-	if ((surface
-	     = eglCreateWindowSurface(display, config,
-				      nativeWin, NULL)) == EGL_NO_SURFACE)
+	if ((window = malloc(sizeof(struct GVwindow))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	window->xWindow = XCreateWindow(display->xDisplay,
+					DefaultRootWindow(display->xDisplay),
+					0, 0,
+					winWidth, winHeight,
+					0,
+					CopyFromParent,
+					InputOutput,
+					CopyFromParent,
+					CWEventMask,
+					&xWindowAttribs);
+
+
+	XMapWindow(display->xDisplay, window->xWindow);
+	XStoreName(display->xDisplay, window->xWindow, winTitle);
+
+	XFlush(display->xDisplay);
+
+	window->eglNativeWindowHandle = (EGLNativeWindowType) window->xWindow;
+
+	if ((window->eglWindow
+	     = eglCreateWindowSurface(display->eglDisplay,
+				      display->eglDisplayConfig,
+				      window->eglNativeWindowHandle,
+				      NULL)) == EGL_NO_SURFACE)
 	{
 	    THROW(e0, "eglCreateWindowSurface");
 	}
@@ -136,12 +154,11 @@ createEglWindowSurface(EGLDisplay          display,
 	return NULL;
     }
 
-    return surface;
+    return window;
 }
 
 EGLContext
-createEglContext(EGLDisplay display,
-		 EGLConfig  config)
+createEglContext(GVdisplayptr display)
 {
     static const EGLint attribList[] = {
 	EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -152,9 +169,10 @@ createEglContext(EGLDisplay display,
 
     TRY
     {
-	if ((context
-	     = eglCreateContext(display, config,
-				EGL_NO_CONTEXT, attribList)) == EGL_NO_CONTEXT)
+	if ((context = eglCreateContext(display->eglDisplay,
+					display->eglDisplayConfig,
+					EGL_NO_CONTEXT,
+					attribList)) == EGL_NO_CONTEXT)
 	{
 	    THROW(e0, "eglCreateContext");
 	}
@@ -165,4 +183,17 @@ createEglContext(EGLDisplay display,
     }
 
     return context;
+}
+
+void
+renderLoop(GVdisplayptr display,
+	   GVwindowptr  window,
+	   EGLContext   context,
+           GVrenderfunc renderFunc)
+{
+    while(!interrupted(display->xDisplay))
+    {
+	renderFunc();
+        eglSwapBuffers(display->eglDisplay, window->eglWindow);
+    }
 }

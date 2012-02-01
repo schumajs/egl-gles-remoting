@@ -14,58 +14,56 @@
 
 #include <EGL/egl.h>
 
+typedef struct GVdisplay *GVdisplayptr;
+typedef struct GVwindow  *GVwindowptr;
+
+typedef void (*GVrenderfunc)(void);
+
 /*! ***************************************************************************
  * \brief 
  *
+ * \return
+ */
+GVdisplayptr
+createDisplay(void);
+
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \param  [in] display
  * \param  [in] winTitle
  * \param  [in] winWidth
  * \param  [in] winHeight
  * \return
  */
-EGLNativeWindowType
-createEglNativeWindow(const char *winTitle,
-		      int         winWidth,
-		      int         winHeight);
-
-/*! ***************************************************************************
- * \brief 
- *
- * \return
- */
-EGLDisplay
-createEglDisplay(void);
+GVwindowptr
+createWindow(GVdisplayptr  display,
+	     const char   *winTitle,
+	     int           winWidth,
+	     int           winHeight);
 
 /*! ***************************************************************************
  * \brief 
  *
  * \param  [in] display
- * \return
- */
-EGLConfig
-createEglConfig(EGLDisplay display);
-
-/*! ***************************************************************************
- * \brief 
- *
- * \param  [in] display
- * \param  [in] config
- * \param  [in] nativeWin
- * \return
- */
-EGLSurface
-createEglWindowSurface(EGLDisplay          display,
-		       EGLConfig           config,
-		       EGLNativeWindowType nativeWin);
-
-/*! ***************************************************************************
- * \brief 
- *
- * \param  [in] display
- * \param  [in] config
  * \return
  */
 EGLContext
-createEglContext(EGLDisplay display,
-		 EGLConfig  config);
+createEglContext(GVdisplayptr display);
+
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \param  [in] display
+ * \param  [in] window
+ * \param  [in] context
+ * \param  [in] renderFunc
+ * \return
+ */
+void
+renderLoop(GVdisplayptr display,
+	   GVwindowptr  window,
+	   EGLContext   context,
+           GVrenderfunc renderFunc);
 
 #endif /* EVAL_UTIL_H_ */
