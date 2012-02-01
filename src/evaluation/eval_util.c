@@ -10,6 +10,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -52,10 +53,13 @@ GVdisplayptr
 createDisplay()
 {
     static const EGLint attribList[] = {
-	EGL_RED_SIZE, 1,
-	EGL_GREEN_SIZE, 1,
-	EGL_BLUE_SIZE, 1,
-	EGL_DEPTH_SIZE, 1,
+	EGL_RED_SIZE, 5,
+	EGL_GREEN_SIZE, 6,
+	EGL_BLUE_SIZE, 5,
+	EGL_ALPHA_SIZE, EGL_DONT_CARE,
+	EGL_DEPTH_SIZE, EGL_DONT_CARE,
+	EGL_STENCIL_SIZE, EGL_DONT_CARE,
+	EGL_SAMPLE_BUFFERS, 0,
 	EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 	EGL_NONE
     };
@@ -107,12 +111,14 @@ createWindow(GVdisplayptr  display,
 	     int           winWidth,
 	     int           winHeight)
 {
-    GVwindowptr            window;
+    GVwindowptr          window;
 
+    XEvent               xEvent;
     Window               xRootWindow;
-    XSetWindowAttributes xWindowAttribs;
-
-    xWindowAttribs.event_mask = ExposureMask | PointerMotionMask | KeyPressMask;
+    XSetWindowAttributes xWindowAttribs1;
+    XSetWindowAttributes xWindowAttribs2;
+    XWMHints             xWindowMgrHints;
+    Atom                 xWindowMgrState;
 
     TRY
     {
@@ -120,6 +126,8 @@ createWindow(GVdisplayptr  display,
 	{
 	    THROW(e0, "malloc");
 	}
+
+	xWindowAttribs1.event_mask = ExposureMask | PointerMotionMask | KeyPressMask;
 
 	window->xWindow = XCreateWindow(display->xDisplay,
 					DefaultRootWindow(display->xDisplay),
@@ -130,13 +138,35 @@ createWindow(GVdisplayptr  display,
 					InputOutput,
 					CopyFromParent,
 					CWEventMask,
-					&xWindowAttribs);
+					&xWindowAttribs1);
 
+	xWindowAttribs2.override_redirect = 0;
+	XChangeWindowAttributes(display->xDisplay,
+				window->xWindow,
+				CWOverrideRedirect,
+				&xWindowAttribs2);
+
+	xWindowMgrHints.input = 1;
+	xWindowMgrHints.flags = InputHint;
+	XSetWMHints(display->xDisplay, window->xWindow, &xWindowMgrHints);
 
 	XMapWindow(display->xDisplay, window->xWindow);
 	XStoreName(display->xDisplay, window->xWindow, winTitle);
 
-	XFlush(display->xDisplay);
+	xWindowMgrState = XInternAtom(display->xDisplay, "_NET_WM_STATE", 0);
+
+	memset(&xEvent, 0, sizeof(xEvent));
+	xEvent.type                 = ClientMessage;
+	xEvent.xclient.window       = window->xWindow;
+	xEvent.xclient.message_type = xWindowMgrState;
+	xEvent.xclient.format       = 32;
+	xEvent.xclient.data.l[0]    = 1;
+	xEvent.xclient.data.l[1]    = 0;
+	XSendEvent(display->xDisplay,
+		   DefaultRootWindow(display->xDisplay),
+		   0,
+		   SubstructureNotifyMask,
+		   &xEvent);
 
 	window->eglNativeWindowHandle = (EGLNativeWindowType) window->xWindow;
 
@@ -158,7 +188,8 @@ createWindow(GVdisplayptr  display,
 }
 
 EGLContext
-createEglContext(GVdisplayptr display)
+createEglContext(GVdisplayptr display,
+		 GVwindowptr  window)
 {
     static const EGLint attribList[] = {
 	EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -176,6 +207,14 @@ createEglContext(GVdisplayptr display)
 	{
 	    THROW(e0, "eglCreateContext");
 	}
+
+	if (!eglMakeCurrent(display->eglDisplay,
+			    window->eglWindow,
+			    window->eglWindow,
+			    context))
+	{
+	    THROW(e0, "eglMakeCurrent");
+	}
     }
     CATCH (e0)
     {
@@ -185,15 +224,21 @@ createEglContext(GVdisplayptr display)
     return context;
 }
 
-void
+int
 renderLoop(GVdisplayptr display,
 	   GVwindowptr  window,
 	   EGLContext   context,
            GVrenderfunc renderFunc)
 {
-    while(!interrupted(display->xDisplay))
+    while (!interrupted(display->xDisplay))
     {
-	renderFunc();
+	if (renderFunc() == -1)
+	{
+	    return -1;
+	}
+
         eglSwapBuffers(display->eglDisplay, window->eglWindow);
     }
+
+    return 0;
 }

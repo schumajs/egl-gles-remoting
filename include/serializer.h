@@ -89,6 +89,7 @@ typedef int GVcallid;
 #define GV_CMDID_GLES2_VERTEXATTRIBPOINTER         0x3c
 #define GV_CMDID_GLES2_ENABLEVERTEXATTRIBARRAY     0x3d
 #define GV_CMDID_GLES2_DRAWARRAYS                  0x3e
+#define GV_CMDID_GLES2_GETERROR                    0x3f
 
 /*! ***************************************************************************
  * \brief

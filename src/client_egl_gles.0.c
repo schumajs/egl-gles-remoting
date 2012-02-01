@@ -24,7 +24,8 @@
 #include "heap_manager.h"
 #include "janitor.h"
 
-#define TRANSPORT_LENGTH 12288 // (3 * 4096)
+#define TRANSPORT_LENGTH 208896 // (51 * 4096)
+// #define TRANSPORT_LENGTH 12288 // (3 * 4096)
 
 #define DEFAULT_DISPLAY  (void *)1
 #define DEFAULT_CONTEXT  (void *)1
@@ -1285,4 +1286,25 @@ glDrawArrays(GLenum  mode,
     gvSendVarSizeData(transport,
 		      vertexAttrib->ptr,
 		      count * vertexAttrib->size * sizeofComponentType);
+}
+
+GLenum
+glGetError()
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    GLenum          error;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GETERROR);
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &error, sizeof(GLenum));
+
+    return error;
 }

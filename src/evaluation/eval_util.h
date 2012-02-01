@@ -14,10 +14,11 @@
 
 #include <EGL/egl.h>
 
+/* platform-specific */
 typedef struct GVdisplay *GVdisplayptr;
 typedef struct GVwindow  *GVwindowptr;
 
-typedef void (*GVrenderfunc)(void);
+typedef int (*GVrenderfunc)(void);
 
 /*! ***************************************************************************
  * \brief 
@@ -46,10 +47,12 @@ createWindow(GVdisplayptr  display,
  * \brief 
  *
  * \param  [in] display
+ * \param  [in] window
  * \return
  */
 EGLContext
-createEglContext(GVdisplayptr display);
+createEglContext(GVdisplayptr display,
+		 GVwindowptr  window);
 
 /*! ***************************************************************************
  * \brief 
@@ -60,7 +63,7 @@ createEglContext(GVdisplayptr display);
  * \param  [in] renderFunc
  * \return
  */
-void
+int
 renderLoop(GVdisplayptr display,
 	   GVwindowptr  window,
 	   EGLContext   context,

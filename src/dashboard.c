@@ -68,8 +68,6 @@ int main()
 	    THROW(e0, "gvStartJanitor");
 	}
 
-	gvSleep(1, 0);
-
 	demoClient();
 
 	gvSleep(180, 0);

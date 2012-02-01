@@ -910,11 +910,27 @@ _glDrawArrays()
     glDrawArrays(mode, first, count);
 }
 
+static
+void _glGetError()
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    GVcallid       callId;
+    GLenum         error;
+
+    gvReceiveData(transport, &callId, sizeof(GVcallid));
+
+    error = glGetError();
+
+    gvStartSending(transport, NULL, callId);
+    gvSendData(transport, &error, sizeof(GLenum));
+}
+
 /* ****************************************************************************
  * Jump table
  */
 
-GVdispatchfunc eglGlesJumpTable[63] = {
+GVdispatchfunc eglGlesJumpTable[64] = {
     _notInUse,
     _notInUse,
     _notInUse,
@@ -977,5 +993,6 @@ GVdispatchfunc eglGlesJumpTable[63] = {
     _glUseProgram,
     _glVertexAttribPointer,
     _glEnableVertexAttribArray,
-    _glDrawArrays
+    _glDrawArrays,
+    _glGetError
 };

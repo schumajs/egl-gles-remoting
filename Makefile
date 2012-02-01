@@ -137,8 +137,11 @@ dashboard: $(SH_TAR) $(SL_TAR)
 
 EVAL_OBJS := src/evaluation
 
+#eval2: $(CL_TAR)
+#	$(CC) $(EVAL_OBJS)/eval1.c $(EVAL_OBJS)/eval_util.c $(EVAL_OBJS)/esShader.c $(EVAL_OBJS)/esUtil.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
+
 eval1: $(CL_TAR)
-	$(CC) $(EVAL_OBJS)/eval1.c $(EVAL_OBJS)/eval_util.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
+	$(CC) $(EVAL_OBJS)/Hello_Triangle.c  $(EVAL_OBJS)/esShader.c $(EVAL_OBJS)/esUtil.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
 
 #
 # Compilation

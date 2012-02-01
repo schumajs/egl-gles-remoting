@@ -53,7 +53,7 @@ GLuint ESUTIL_API esLoadShader ( GLenum type, const char *shaderSrc )
 
    // Load the shader source
    glShaderSource ( shader, 1, &shaderSrc, NULL );
-   
+
    // Compile the shader
    glCompileShader ( shader );
 

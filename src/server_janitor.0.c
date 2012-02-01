@@ -20,7 +20,7 @@
 #include "server_state_tracker.0.h"
 #include "transport.h"
 
-extern GVdispatchfunc eglGlesJumpTable[11];
+extern GVdispatchfunc eglGlesJumpTable[64];
 
 /* ****************************************************************************
  * Janitor
