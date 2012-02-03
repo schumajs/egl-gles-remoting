@@ -15,11 +15,10 @@
 #include "lock.h"
 
 GVlockptr
-gvCreateLock()
+gvCreateLock(void *desiredAddr)
 {
-    pthread_mutex_t     mutex;
-    pthread_mutexattr_t mutexAttr;
-    GVlockptr           newLock;
+    pthread_mutex_t     *mutex;
+    pthread_mutexattr_t  mutexAttr;
 
     TRY
     {
@@ -33,19 +32,21 @@ gvCreateLock()
 	    THROW(e0, "pthread_mutexattr_setpshared");
 	}
 
-	if (pthread_mutexattr_init(&mutexAttr) != 0)
+	if (desiredAddr == NULL)
 	{
-	    THROW(e0, "pthread_mutexattr_init");
+	    if ((mutex = malloc(sizeof(pthread_mutex_t))) == NULL)
+	    {
+		THROW(e0, "malloc");
+	    }
+	}
+	else
+	{
+	    mutex = desiredAddr;
 	}
 
-	if (pthread_mutex_init(&mutex, &mutexAttr) != 0)
+	if (pthread_mutex_init(mutex, &mutexAttr) != 0)
 	{
 	    THROW(e0, "pthread_mutex_init");
-	}
-
-	if ((newLock = malloc(sizeof(pthread_mutex_t))) == NULL)
-	{
-	    THROW(e0, "malloc");
 	}
     }
     CATCH (e0)
@@ -53,7 +54,7 @@ gvCreateLock()
 	return NULL;
     }
 
-    return newLock;
+    return mutex;
 }
 
 int
@@ -119,6 +120,8 @@ gvDestroyLock(GVlockptr lock)
 	{
 	    THROW(e0, "pthread_mutex_destroy");
 	}
+
+	free(lock);
     }
     CATCH(e0)
     {

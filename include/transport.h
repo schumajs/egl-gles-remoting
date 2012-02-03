@@ -17,7 +17,7 @@
 #include "shared_memory.h"
 
 struct GVbuffer {
-    GVlockptr lock;
+    GVlockptr exclusiveAccess;
 };
 
 typedef struct GVbuffer *GVbufferptr;

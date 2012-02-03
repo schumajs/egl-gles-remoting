@@ -36,12 +36,15 @@ struct Buffer {
 
     /* Shared memory */
     struct InShmBufferPart {
-	VRB              head;
+	VRB       head;
 
-	GVlock           lock;
+	GVlock    exclusiveAccess;
 
-	struct GVcondvar readCondVar;
-	struct GVcondvar writeCondVar;
+	GVcondvar dataAvailable;
+	GVlock    dataAvailableAccess;
+
+	GVcondvar spaceAvailable;
+	GVlock    spaceAvailableAccess;
     } *inShmPart;
 
 };
@@ -170,58 +173,57 @@ static int systemPageSize = 4096;
 static int
 initSyncPrimitives(struct Buffer *callBuffer, struct Buffer *returnBuffer)
 {
-    GVlockptr    callLock;
-    GVcondvarptr callReadCondVar;
-    GVcondvarptr callWriteCondVar;
-    GVlockptr    returnLock;
-    GVcondvarptr returnReadCondVar;
-    GVcondvarptr returnWriteCondVar;
-
     TRY
     {
-	if ((callLock = gvCreateLock()) == NULL)
+	if (gvCreateLock(&callBuffer->inShmPart->exclusiveAccess) == NULL)
 	{
 	    THROW(e0, "gvCreateLock");
 	}
 
-	if ((callReadCondVar = gvCreateCondVar()) == NULL)
+	if (gvCreateCondVar(&callBuffer->inShmPart->dataAvailable) == NULL)
 	{
-	    THROW(e0, "gvCreateCond");
+	    THROW(e0, "gvCreateCondVar");
 	}
 
-	if ((callWriteCondVar = gvCreateCondVar()) == NULL)
-	{
-	    THROW(e0, "gvCreateCond");
-	}
-
-	if ((returnLock = gvCreateLock()) == NULL)
+	if (gvCreateLock(&callBuffer->inShmPart->dataAvailableAccess) == NULL)
 	{
 	    THROW(e0, "gvCreateLock");
 	}
 
-	if ((returnReadCondVar = gvCreateCondVar()) == NULL)
+	if (gvCreateCondVar(&callBuffer->inShmPart->spaceAvailable) == NULL)
 	{
-	    THROW(e0, "gvCreateCond");
+	    THROW(e0, "gvCreateCondVar");
 	}
 
-	if ((returnWriteCondVar = gvCreateCondVar()) == NULL)
+	if (gvCreateLock(&callBuffer->inShmPart->spaceAvailableAccess) == NULL)
 	{
-	    THROW(e0, "gvCreateCond");
+	    THROW(e0, "gvCreateLock");
 	}
 
-        memcpy(&callBuffer->inShmPart->lock, callLock, sizeof(GVlock));
-        memcpy(&callBuffer->inShmPart->readCondVar, callReadCondVar, sizeof(struct GVcondvar));
-        memcpy(&callBuffer->inShmPart->writeCondVar, callWriteCondVar, sizeof(struct GVcondvar));
-        memcpy(&returnBuffer->inShmPart->lock, returnLock, sizeof(GVlock));
-        memcpy(&returnBuffer->inShmPart->readCondVar, returnReadCondVar, sizeof(struct GVcondvar));
-        memcpy(&returnBuffer->inShmPart->writeCondVar, returnWriteCondVar, sizeof(struct GVcondvar));
-	
-	free(callLock);
-	free(callReadCondVar);
-	free(callWriteCondVar);
-	free(returnLock);
-	free(returnReadCondVar);
-	free(returnWriteCondVar);
+	if (gvCreateLock(&returnBuffer->inShmPart->exclusiveAccess) == NULL)
+	{
+	    THROW(e0, "gvCreateLock");
+	}
+
+	if (gvCreateCondVar(&returnBuffer->inShmPart->dataAvailable) == NULL)
+	{
+	    THROW(e0, "gvCreateCondVar");
+	}
+
+	if (gvCreateLock(&returnBuffer->inShmPart->dataAvailableAccess) == NULL)
+	{
+	    THROW(e0, "gvCreateLock");
+	}
+
+	if (gvCreateCondVar(&returnBuffer->inShmPart->spaceAvailable) == NULL)
+	{
+	    THROW(e0, "gvCreateCondVar");
+	}
+
+	if (gvCreateLock(&returnBuffer->inShmPart->spaceAvailableAccess) == NULL)
+	{
+	    THROW(e0, "gvCreateLock");
+	}
     }
     CATCH (e0)
     {
@@ -359,8 +361,10 @@ gvCreateTransport(GVshmptr shm, size_t offset, size_t length)
 	transport->public.callBuffer   = (GVbufferptr) callBuffer;
 	transport->public.returnBuffer = (GVbufferptr) returnBuffer;
 
-	transport->public.callBuffer->lock   = &callBuffer->inShmPart->lock;
-	transport->public.returnBuffer->lock = &returnBuffer->inShmPart->lock;
+	transport->public.callBuffer->exclusiveAccess
+	    = &callBuffer->inShmPart->exclusiveAccess;
+	transport->public.returnBuffer->exclusiveAccess
+	    = &returnBuffer->inShmPart->exclusiveAccess;
     }
     CATCH (e0)
     {
@@ -407,8 +411,16 @@ gvTake(GVbufferptr buffer, size_t length)
 int
 gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 {
-    GVcondvarptr  readCondVar  = &castBuffer(buffer)->inShmPart->readCondVar;
-    GVcondvarptr  writeCondVar = &castBuffer(buffer)->inShmPart->writeCondVar;
+    GVcondvarptr dataAvailable
+	= &castBuffer(buffer)->inShmPart->dataAvailable;
+    GVlockptr dataAvailableAccess 
+	= &castBuffer(buffer)->inShmPart->dataAvailableAccess;
+
+    GVcondvarptr spaceAvailable
+	= &castBuffer(buffer)->inShmPart->spaceAvailable;
+    GVlockptr spaceAvailableAccess 
+	= &castBuffer(buffer)->inShmPart->spaceAvailableAccess;
+
     vrb_p         head         = &castBuffer(buffer)->inShmPart->head;
     void         *tail         = castBuffer(buffer)->inAppPart.tail;
 
@@ -423,20 +435,20 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 	{
 	    offset = (size_t) vrb_data_ptr(head);
 
-	    if (gvAcquire(readCondVar->lock) == -1)
+	    if (gvAcquire(dataAvailableAccess) == -1)
 	    {
 		THROW(e0, "gvAcquire");
 	    }
 
 	    while ((dataLength = vrb_data_len(head)) == 0)
 	    {
-		if (gvWait(readCondVar) == -1)
+		if (gvWait(dataAvailable, dataAvailableAccess) == -1)
 		{
-		    THROW(e1, "gvWait");
+		    THROW(e0, "gvWait");
 		}
 	    }
 
-	    if (gvRelease(readCondVar->lock) == -1)
+	    if (gvRelease(dataAvailableAccess) == -1)
 	    {
 		THROW(e0, "gvRelease");
 	    }
@@ -447,7 +459,7 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 
 		if (vrb_take(head, restLength) == -1)
 		{
-		    THROW(e1, "vrb_take");
+		    THROW(e0, "vrb_take");
 		}
 
 		done = 1;
@@ -458,26 +470,26 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 		
 		if (vrb_take(head, dataLength) == -1)
 		{
-		    THROW(e1, "vrb_take");
+		    THROW(e0, "vrb_take");
 		}
 
 		addr       = addr + dataLength;
 		restLength = restLength - dataLength;
 	    }
 
-	    if (gvAcquire(writeCondVar->lock) == -1)
+	    if (gvAcquire(spaceAvailableAccess) == -1)
 	    {
-		THROW(e1, "gvRelease");
+		THROW(e0, "gvRelease");
 	    }
 
-	    if (gvNotify(writeCondVar) == -1)
+	    if (gvNotify(spaceAvailable) == -1)
 	    {
-		THROW(e1, "gvNotify");
+		THROW(e0, "gvNotify");
 	    }
 
-	    if (gvRelease(writeCondVar->lock) == -1)
+	    if (gvRelease(spaceAvailableAccess) == -1)
 	    {
-		THROW(e1, "gvRelease");
+		THROW(e0, "gvRelease");
 	    }
 
 	    if (done)
@@ -488,15 +500,6 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 
     }
     CATCH (e0)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-	 * fails, so just ignore errors.
-	 */
-	gvRelease(readCondVar->lock);
-
-	return -1;
-    }
-    CATCH (e1)
     {
 	return -1;
     }
@@ -541,8 +544,16 @@ gvGive(GVbufferptr buffer, size_t length)
 int
 gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 {
-    GVcondvarptr  readCondVar  = &castBuffer(buffer)->inShmPart->readCondVar;
-    GVcondvarptr  writeCondVar = &castBuffer(buffer)->inShmPart->writeCondVar;
+    GVcondvarptr dataAvailable
+	= &castBuffer(buffer)->inShmPart->dataAvailable;
+    GVlockptr dataAvailableAccess 
+	= &castBuffer(buffer)->inShmPart->dataAvailableAccess;
+
+    GVcondvarptr spaceAvailable
+	= &castBuffer(buffer)->inShmPart->spaceAvailable;
+    GVlockptr spaceAvailableAccess 
+	= &castBuffer(buffer)->inShmPart->spaceAvailableAccess;
+
     vrb_p         head         = &castBuffer(buffer)->inShmPart->head;
     void         *tail         = castBuffer(buffer)->inAppPart.tail;
 
@@ -558,22 +569,22 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 	    offset = (size_t) vrb_space_ptr(head);
 
 
-	    if (gvAcquire(writeCondVar->lock) == -1)
+	    if (gvAcquire(spaceAvailableAccess) == -1)
 	    {
 		THROW(e0, "gvAcquire");
 	    }
 
 	    while ((spaceLength = vrb_space_len(head)) == 0)
 	    {
-		if (gvWait(writeCondVar) == -1)
+		if (gvWait(spaceAvailable, spaceAvailableAccess) == -1)
 		{
-		    THROW(e1, "gvWait");
+		    THROW(e0, "gvWait");
 		}
 	    }
 
-	    if (gvRelease(writeCondVar->lock) == -1)
+	    if (gvRelease(spaceAvailableAccess) == -1)
 	    {
-		THROW(e0, "gvAcquire");
+		THROW(e0, "gvRelease");
 	    }
 
 	    if (spaceLength >= restLength)
@@ -582,7 +593,7 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 	
 		if (vrb_give(head, restLength) == -1)
 		{
-		    THROW(e1, "vrb_give");
+		    THROW(e0, "vrb_give");
 		}
 
 		done = 1;
@@ -593,24 +604,24 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 
 		if (vrb_give(head, spaceLength) == -1)
 		{
-		    THROW(e1, "vrb_give");
+		    THROW(e0, "vrb_give");
 		}
 
 		addr       = addr + spaceLength;
 		restLength = restLength - spaceLength;
 	    }
 
-	    if (gvAcquire(readCondVar->lock) == -1)
+	    if (gvAcquire(dataAvailableAccess) == -1)
 	    {
 		THROW(e0, "gvRelease");
 	    }
 
-	    if (gvNotify(readCondVar) == -1)
+	    if (gvNotify(dataAvailable) == -1)
 	    {
-		THROW(e1, "gvNotify");
+		THROW(e0, "gvNotify");
 	    }
 
-	    if (gvRelease(readCondVar->lock) == -1)
+	    if (gvRelease(dataAvailableAccess) == -1)
 	    {
 		THROW(e0, "gvRelease");
 	    }
@@ -622,15 +633,6 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 	}
     }
     CATCH (e0)
-    {
-	/* Try to unlock. At this point we can't do anything if unlocking
-	 * fails, so just ignore errors.
-	 */
-	gvRelease(writeCondVar->lock);
-
-	return -1;
-    }
-    CATCH (e1)
     {
 	return -1;
     }

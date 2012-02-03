@@ -48,8 +48,8 @@ initHeapMgrClient()
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	callLock = transport->callBuffer->lock;
-	returnLock = transport->returnBuffer->lock;
+	callLock = transport->callBuffer->exclusiveAccess;
+	returnLock = transport->returnBuffer->exclusiveAccess;
     }
     CATCH (e0)
     {

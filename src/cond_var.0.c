@@ -10,26 +10,18 @@
  */
 
 #include <stdlib.h>
-#include <string.h>
 
 #include "cond_var.h"
 #include "error.h"
 
 GVcondvarptr
-gvCreateCondVar()
+gvCreateCondVar(void *desiredAddr)
 {
-    pthread_cond_t     cond;
-    pthread_condattr_t condAttr;
-    GVlockptr          lock;
-    GVcondvarptr       newCondVar;
+    pthread_cond_t     *cond;
+    pthread_condattr_t  condAttr;
 
     TRY
     {
-	if ((lock = gvCreateLock()) == NULL)
-	{
-	    THROW(e0, "gvCreateLock");
-	}
-
 	if (pthread_condattr_init(&condAttr) != 0)
 	{
 	    THROW(e0, "pthread_condattr_init");
@@ -40,38 +32,37 @@ gvCreateCondVar()
 	    THROW(e0, "pthread_condattr_setpshared");
 	}
 
-	if (pthread_cond_init(&cond, &condAttr) != 0)
+	if (desiredAddr == NULL)
+	{
+	    if ((cond = malloc(sizeof(pthread_cond_t))) == NULL)
+	    {
+		THROW(e0, "malloc");
+	    }
+	}
+	else
+	{
+	    cond = desiredAddr;
+	}
+
+	if (pthread_cond_init(cond, &condAttr) != 0)
 	{
 	    THROW(e0, "pthread_cond_init");
 	}
-
-	if ((newCondVar = malloc(sizeof(struct GVcondvar))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
-	if ((newCondVar->cond = malloc(sizeof(pthread_cond_t))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
-	newCondVar->lock = lock;
-	memcpy(newCondVar->cond, &cond, sizeof(pthread_cond_t));
     }
     CATCH (e0)
     {
 	return NULL;
     }
 
-    return newCondVar;
+    return cond;
 }
 
 int
-gvWait(GVcondvarptr condVar)
+gvWait(GVcondvarptr condVar, GVlockptr lock)
 {
     TRY
     {
-	if (pthread_cond_wait(condVar->cond, condVar->lock) != 0)
+	if (pthread_cond_wait(condVar, lock) != 0)
 	{
 	    THROW(e0, "pthread_cond_wait");
 	}
@@ -89,14 +80,10 @@ gvNotify(GVcondvarptr condVar)
 {
     TRY
     {
-	printf("%p\n", condVar->cond);
-
-	if (pthread_cond_broadcast(condVar->cond) != 0)
+	if (pthread_cond_signal(condVar) != 0)
 	{
 	    THROW(e0, "pthread_cond_signal");
 	}
-
-	puts("CHECKPOINT");
     }
     CATCH(e0)
     {
@@ -111,12 +98,7 @@ gvDestroyCondVar(GVcondvarptr condVar)
 {
     TRY
     {
-	if (gvDestroyLock(condVar->lock) == -1)
-	{
-	    THROW(e0, "gvDestroyLock");
-	}
-
-	if (pthread_cond_destroy(condVar->cond) != 0)
+	if (pthread_cond_destroy(condVar) != 0)
 	{
 	    THROW(e0, "pthread_cond_destroy");
 	}

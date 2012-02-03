@@ -16,32 +16,27 @@
 
 #include "lock.h"
 
-typedef pthread_cond_t GVcond;
-typedef GVcond *GVcondptr;
-
-struct GVcondvar {
-    GVlockptr lock;
-    GVcondptr cond;
-};
-
-typedef struct GVcondvar *GVcondvarptr;
+typedef pthread_cond_t GVcondvar;
+typedef GVcondvar *GVcondvarptr;
 
 /*! ***************************************************************************
  * \brief 
  *
+ * \param  [in] desiredAddr
  * \return
  */
 GVcondvarptr
-gvCreateCondVar(void);
+gvCreateCondVar(void *desiredAddr);
 
 /*! ***************************************************************************
  * \brief 
  *
  * \param  [in] condVar
+ * \param  [in] lock
  * \return
  */
 int
-gvWait(GVcondvarptr condVar);
+gvWait(GVcondvarptr condVar, GVlockptr lock);
 
 /*! ***************************************************************************
  * \brief 

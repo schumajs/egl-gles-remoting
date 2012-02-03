@@ -20,10 +20,11 @@ typedef GVlock *GVlockptr;
 /*! ***************************************************************************
  * \brief 
  *
+ * \param  [in] desiredAddr
  * \return
  */
 GVlockptr
-gvCreateLock(void);
+gvCreateLock(void *desiredAddr);
 
 /*! ***************************************************************************
  * \brief 
