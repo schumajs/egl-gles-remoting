@@ -83,8 +83,6 @@ static void
 	    // printf("PID %i THREAD %ul GOT %i\n", getpid(), offsetState->thread, cmdId);
 
 	    jumpTable[cmdId]();
-
-	    gvSleep(0, 500);
 	}
     }
     CATCH (e0)
