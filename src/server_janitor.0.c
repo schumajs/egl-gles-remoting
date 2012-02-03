@@ -246,23 +246,43 @@ int
 gvBonjour(size_t offset,
 	  size_t length)
 {
-    GVtransportptr  transport;
+    pthread_t         dispatchLoopThread; 
+    GVoffsetstateptr  offsetState;
+    GVshmtransportptr transport;
  
     TRY
     {
 	/* Create transport */
-	if ((transport
-	     = gvCreateTransport(janitor->public.vmShm,
-				 offset,
-				 length)) == NULL)
+	if ((transport = gvCreateShmTransport(janitor->public.vmShm,
+					      offset,
+					      length)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}
 
 	/* Start dispatching loop */	
-	if (gvDispatchLoop(transport, eglGlesJumpTable, 0) == -1)
+	if ((dispatchLoopThread = gvDispatchLoop(transport,
+						 eglGlesJumpTable)) == -1)
 	{
 	    THROW(e0, "gvDispatchLoop");
+	}
+
+	if ((offsetState = malloc(sizeof(struct GVoffsetstate))) == NULL)
+	{
+	    THROW(e0, "malloc");
+	}
+
+	offsetState->thread    = dispatchLoopThread;
+	offsetState->transport = transport;
+
+	if (gvPutOffsetState(transport->offset, offsetState) == -1)
+	{
+	    THROW(e0, "gvPutProcessState");
+	}
+
+	if (pthread_join(thread, NULL) != 0)
+	{
+	    THROW(e0, "pthread_join");
 	}
     }
     CATCH (e0)

@@ -12,6 +12,8 @@
 #ifndef SERVER_DISPATCHER_H_
 #define SERVER_DISPATCHER_H_
 
+#include <pthread.h>
+
 #include "transport.h"
 
 typedef void (*GVdispatchfunc)(void);
@@ -21,12 +23,10 @@ typedef void (*GVdispatchfunc)(void);
  *
  * \param  [in] dispatcher
  * \param  [in] jumpTable
- * \param  [in] joinThread
  * \return
  */
-int
+pthread_t
 gvDispatchLoop(GVtransportptr transport,
-	       GVdispatchfunc jumpTable[],
-	       int            joinThread);
+	       GVdispatchfunc jumpTable[]);
 
 #endif /* SERVER_DISPATCHER_H_ */

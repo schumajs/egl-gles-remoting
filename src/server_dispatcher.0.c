@@ -35,9 +35,8 @@ static void
 {
     GVcmdid           cmdId;
     GVdispatchfunc   *jumpTable;
-    GVoffsetstateptr  offsetState;
     struct ThreadArg *threadArg;
-    GVtransportptr      transport;
+    GVtransportptr    transport;
 
     TRY
     {
@@ -56,19 +55,6 @@ static void
 	if (gvSetCurrentThreadTransport(transport) == -1)
 	{
 	    THROW(e0, "gvSetThreadTransport");
-	}
-
-	if ((offsetState = malloc(sizeof(struct GVoffsetstate))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
-
-	offsetState->thread    = pthread_self();
-	offsetState->transport = transport;
-
-	if (gvPutOffsetState(transport->offset, offsetState) == -1)
-	{
-	    THROW(e0, "gvPutProcessState");
 	}
 
 	while (1)
@@ -93,10 +79,9 @@ static void
     return NULL;
 }
 
-int
+pthread_t
 gvDispatchLoop(GVtransportptr transport,
-	       GVdispatchfunc jumpTable[],
-	       int            joinThread)
+	       GVdispatchfunc jumpTable[])
 {
     pthread_t         thread;
     struct ThreadArg *threadArg;
@@ -115,19 +100,11 @@ gvDispatchLoop(GVtransportptr transport,
 	{
 	    THROW(e0, "pthread_create");
 	}
-
-	if (joinThread)
-	{
-	    if (pthread_join(thread, NULL) != 0)
-	    {
-		THROW(e0, "pthread_join");
-	    }
-	}
     }
     CATCH (e0)
     {
 	return -1;
     }
 
-    return 0;
+    return thread;
 }
