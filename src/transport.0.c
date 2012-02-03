@@ -423,14 +423,10 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 	{
 	    offset = (size_t) vrb_data_ptr(head);
 
-	    puts("TRY TO ACQUIRE READ LOCK");
-
 	    if (gvAcquire(readCondVar->lock) == -1)
 	    {
 		THROW(e0, "gvAcquire");
 	    }
-
-	    puts("ACQUIRED READ LOCK");
 
 	    while ((dataLength = vrb_data_len(head)) == 0)
 	    {
@@ -438,6 +434,11 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 		{
 		    THROW(e1, "gvWait");
 		}
+	    }
+
+	    if (gvRelease(readCondVar->lock) == -1)
+	    {
+		THROW(e0, "gvRelease");
 	    }
 
 	    if (dataLength >= restLength)
@@ -464,12 +465,17 @@ gvRead(GVbufferptr buffer, void *addr, size_t restLength)
 		restLength = restLength - dataLength;
 	    }
 
+	    if (gvAcquire(writeCondVar->lock) == -1)
+	    {
+		THROW(e1, "gvRelease");
+	    }
+
 	    if (gvNotify(writeCondVar) == -1)
 	    {
 		THROW(e1, "gvNotify");
 	    }
 
-	    if (gvRelease(readCondVar->lock) == -1)
+	    if (gvRelease(writeCondVar->lock) == -1)
 	    {
 		THROW(e1, "gvRelease");
 	    }
@@ -551,14 +557,11 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 	{
 	    offset = (size_t) vrb_space_ptr(head);
 
-	    puts("TRY TO ACQUIRE WRITE LOCK");
 
 	    if (gvAcquire(writeCondVar->lock) == -1)
 	    {
 		THROW(e0, "gvAcquire");
 	    }
-
-	    puts("ACQUIRED WRITE LOCK");
 
 	    while ((spaceLength = vrb_space_len(head)) == 0)
 	    {
@@ -566,6 +569,11 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 		{
 		    THROW(e1, "gvWait");
 		}
+	    }
+
+	    if (gvRelease(writeCondVar->lock) == -1)
+	    {
+		THROW(e0, "gvAcquire");
 	    }
 
 	    if (spaceLength >= restLength)
@@ -592,12 +600,17 @@ gvWrite(GVbufferptr buffer, const void *addr, size_t restLength)
 		restLength = restLength - spaceLength;
 	    }
 
+	    if (gvAcquire(readCondVar->lock) == -1)
+	    {
+		THROW(e0, "gvRelease");
+	    }
+
 	    if (gvNotify(readCondVar) == -1)
 	    {
 		THROW(e1, "gvNotify");
 	    }
 
-	    if (gvRelease(writeCondVar->lock) == -1)
+	    if (gvRelease(readCondVar->lock) == -1)
 	    {
 		THROW(e0, "gvRelease");
 	    }

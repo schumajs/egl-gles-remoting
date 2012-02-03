@@ -89,10 +89,14 @@ gvNotify(GVcondvarptr condVar)
 {
     TRY
     {
-	if (pthread_cond_signal(condVar->cond) != 0)
+	printf("%p\n", condVar->cond);
+
+	if (pthread_cond_broadcast(condVar->cond) != 0)
 	{
 	    THROW(e0, "pthread_cond_signal");
 	}
+
+	puts("CHECKPOINT");
     }
     CATCH(e0)
     {
