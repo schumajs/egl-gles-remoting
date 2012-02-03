@@ -48,8 +48,8 @@ initJanitorClient()
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	callLock = transport->callBuffer->clientLock;
-	returnLock = transport->returnBuffer->clientLock;
+	callLock = transport->callBuffer->lock;
+	returnLock = transport->returnBuffer->lock;
     }
     CATCH (e0)
     {

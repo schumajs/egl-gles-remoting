@@ -9,8 +9,6 @@
  * \details
  */
 
-#include <pthread.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "error.h"
@@ -25,8 +23,15 @@ gvCreateLock()
 
     TRY
     {
-	pthread_mutexattr_init(&mutexAttr);
-	pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
+	if (pthread_mutexattr_init(&mutexAttr) != 0)
+	{
+	    THROW(e0, "pthread_mutexattr_init");
+	}
+
+	if (pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED) != 0)
+	{
+	    THROW(e0, "pthread_mutexattr_setpshared");
+	}
 
 	if (pthread_mutexattr_init(&mutexAttr) != 0)
 	{

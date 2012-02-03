@@ -12,12 +12,12 @@
 #ifndef TRANSPORT_H_
 #define TRANSPORT_H_
 
+#include "cond_var.h"
 #include "lock.h"
 #include "shared_memory.h"
 
 struct GVbuffer {
-    GVlockptr clientLock;
-    GVlockptr serverLock;
+    GVlockptr lock;
 };
 
 typedef struct GVbuffer *GVbufferptr;
