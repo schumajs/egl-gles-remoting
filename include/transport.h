@@ -14,20 +14,16 @@
 
 #include "lock.h"
 
-struct GVstream {
-    GVlockptr exclusiveAccess;
-};
+typedef struct GVchanel *GVchanelptr;
 
-typedef struct GVstream *GVstreamptr;
-
-typedef int (*GVreadfunc)(GVstreamptr, void*, size_t);
-typedef int (*GVwritefunc)(GVstreamptr, const void*, size_t);
-typedef void* (*GVpeekfunc)(GVstreamptr, size_t);
-typedef int (*GVskipfunc)(GVstreamptr, size_t);
+typedef int (*GVreadfunc)(GVchanelptr, void*, size_t);
+typedef int (*GVwritefunc)(GVchanelptr, const void*, size_t);
+typedef void* (*GVpeekfunc)(GVchanelptr, size_t);
+typedef int (*GVskipfunc)(GVchanelptr, size_t);
 
 struct GVtransport {
-    GVstreamptr is;
-    GVstreamptr os;
+    GVchanelptr oc;
+    GVchanelptr ic;
 
     GVreadfunc  read;
     GVwritefunc write;

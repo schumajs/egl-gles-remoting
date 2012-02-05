@@ -30,7 +30,6 @@ void
 	{
 	    THROW(e0, "gvReceiveData");
 	}
-
 	
 	if (length > 0)
 	{

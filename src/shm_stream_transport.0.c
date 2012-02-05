@@ -18,24 +18,23 @@
 #include "cond_var.h"
 #include "error.h"
 #include "shared_memory.h"
-#include "shared_memory_transport.h"
+#include "shm_stream_transport.h"
 
 /* ****************************************************************************
- * GVstream implementation
+ * GVchanel implementation
  */
 
-struct Stream {
+struct Chanel {
 
     /* App. address space */
-    struct GVstream  base;
+    struct GVchanel  base;
 
     struct AppPart {
 	void        *vrbTail;
     } app;
     
-
     /* Shared memory */
-    struct StreamShmPart {
+    struct ChanelShmPart {
 	VRB       vrbHead;
 
 	GVlock    exclusiveAccess;
@@ -49,8 +48,8 @@ struct Stream {
 
 };
 
-#define castStream(stream) \
-    ((struct Stream *)stream)
+#define castChanel(chanel) \
+    ((struct Chanel *)chanel)
 
 /* ****************************************************************************
  * GVtransport implementation
@@ -59,14 +58,14 @@ struct Stream {
 struct Transport {
 
     /* App. address space */
-    struct GVshmtransport base;
+    struct GVshmstreamtrp base;
 
     /* Shared memory */
     struct TransportShmPart {
 	int                  state;
 
-	struct StreamShmPart is;
-	struct StreamShmPart os;
+	struct ChanelShmPart oc;
+	struct ChanelShmPart ic;
     } *shm;
 
 };
@@ -79,18 +78,18 @@ struct Transport {
  */
 
 static int
-readFunc(GVstreamptr  stream,
+readFunc(GVchanelptr  chanel,
 	 void        *toAddr,
 	 size_t       restLength)
 {
-    GVcondvarptr  dataAvailable        = &castStream(stream)->shm->dataAvailable;
-    GVlockptr     dataAvailableAccess  = &castStream(stream)->shm->dataAvailableAccess;
+    GVcondvarptr  dataAvailable        = &castChanel(chanel)->shm->dataAvailable;
+    GVlockptr     dataAvailableAccess  = &castChanel(chanel)->shm->dataAvailableAccess;
 
-    GVcondvarptr  spaceAvailable       = &castStream(stream)->shm->spaceAvailable;
-    GVlockptr     spaceAvailableAccess = &castStream(stream)->shm->spaceAvailableAccess;
+    GVcondvarptr  spaceAvailable       = &castChanel(chanel)->shm->spaceAvailable;
+    GVlockptr     spaceAvailableAccess = &castChanel(chanel)->shm->spaceAvailableAccess;
 
-    vrb_p         vrbHead              = &castStream(stream)->shm->vrbHead;
-    void         *vrbTail              = castStream(stream)->app.vrbTail;
+    vrb_p         vrbHead              = &castChanel(chanel)->shm->vrbHead;
+    void         *vrbTail              = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        dataLength;
@@ -175,18 +174,18 @@ readFunc(GVstreamptr  stream,
 }
 
 static int
-writeFunc(GVstreamptr  stream,
+writeFunc(GVchanelptr  chanel,
 	  const void  *fromAddr,
 	  size_t       restLength)
 {
-    GVcondvarptr  dataAvailable        = &castStream(stream)->shm->dataAvailable;
-    GVlockptr     dataAvailableAccess  = &castStream(stream)->shm->dataAvailableAccess;
+    GVcondvarptr  dataAvailable        = &castChanel(chanel)->shm->dataAvailable;
+    GVlockptr     dataAvailableAccess  = &castChanel(chanel)->shm->dataAvailableAccess;
 
-    GVcondvarptr  spaceAvailable       = &castStream(stream)->shm->spaceAvailable;
-    GVlockptr     spaceAvailableAccess = &castStream(stream)->shm->spaceAvailableAccess;
+    GVcondvarptr  spaceAvailable       = &castChanel(chanel)->shm->spaceAvailable;
+    GVlockptr     spaceAvailableAccess = &castChanel(chanel)->shm->spaceAvailableAccess;
 
-    vrb_p         vrbHead              = &castStream(stream)->shm->vrbHead;
-    void         *vrbTail              = castStream(stream)->app.vrbTail;
+    vrb_p         vrbHead              = &castChanel(chanel)->shm->vrbHead;
+    void         *vrbTail              = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        spaceLength;
@@ -271,14 +270,14 @@ writeFunc(GVstreamptr  stream,
 }
 
 static void
-*peekFunc(GVstreamptr stream,
+*peekFunc(GVchanelptr chanel,
 	  size_t      numBytes)
 {
-    GVcondvarptr  dataAvailable        = &castStream(stream)->shm->dataAvailable;
-    GVlockptr     dataAvailableAccess  = &castStream(stream)->shm->dataAvailableAccess;
+    GVcondvarptr  dataAvailable        = &castChanel(chanel)->shm->dataAvailable;
+    GVlockptr     dataAvailableAccess  = &castChanel(chanel)->shm->dataAvailableAccess;
 
-    vrb_p         vrbHead              = &castStream(stream)->shm->vrbHead;
-    void         *vrbTail              = castStream(stream)->app.vrbTail;
+    vrb_p         vrbHead              = &castChanel(chanel)->shm->vrbHead;
+    void         *vrbTail              = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        dataLength;
@@ -319,12 +318,12 @@ static void
 }
 
 static int
-skipFunc(GVstreamptr stream,
+skipFunc(GVchanelptr chanel,
 	 size_t      length)
 {
     TRY
     {
-        if (vrb_take(&castStream(stream)->shm->vrbHead, length) == -1)
+        if (vrb_take(&castChanel(chanel)->shm->vrbHead, length) == -1)
         {
             THROW(e0, "vrb_take");
         }
@@ -362,21 +361,21 @@ static int systemPageSize = 4096;
 #define FILE_HEAD_OFFSET                    0
 #define FILE_TAIL_OFFSET                    systemPageSize
 
-#define FILE_OS_VRB_TAIL_OFFSET             FILE_TAIL_OFFSET
-#define FILE_IS_VRB_TAIL_OFFSET(length)     FILE_OS_VRB_TAIL_OFFSET \
+#define FILE_OC_VRB_TAIL_OFFSET             FILE_TAIL_OFFSET
+#define FILE_IC_VRB_TAIL_OFFSET(length)     FILE_OC_VRB_TAIL_OFFSET \
                                             + VRB_TAIL_SIZE(length)
 /* Logical offsets (mmap) */
 
 #define MMAP_HEAD_OFFSET                    0
 #define MMAP_TAIL_OFFSET                    systemPageSize
 
-#define MMAP_OS_VRB_TAIL_1ST_OFFSET         MMAP_TAIL_OFFSET
-#define MMAP_OS_VRB_TAIL_2ND_OFFSET(length) MMAP_TAIL_OFFSET        \
+#define MMAP_OC_VRB_TAIL_1ST_OFFSET         MMAP_TAIL_OFFSET
+#define MMAP_OC_VRB_TAIL_2ND_OFFSET(length) MMAP_TAIL_OFFSET        \
                                             + VRB_TAIL_SIZE(length)
 
-#define MMAP_IS_VRB_TAIL_1ST_OFFSET(length) MMAP_TAIL_OFFSET        \
+#define MMAP_IC_VRB_TAIL_1ST_OFFSET(length) MMAP_TAIL_OFFSET        \
                                             + TAIL_SIZE(length)
-#define MMAP_IS_VRB_TAIL_2ND_OFFSET(length) MMAP_TAIL_OFFSET        \
+#define MMAP_IC_VRB_TAIL_2ND_OFFSET(length) MMAP_TAIL_OFFSET        \
                                             + TAIL_SIZE(length)     \
                                             + VRB_TAIL_SIZE(length)
 
@@ -407,34 +406,34 @@ static void
 	    THROW(e0, "gvAttachShm");
 	}
 
-	if (gvAttachShm(base   + MMAP_OS_VRB_TAIL_1ST_OFFSET,
+	if (gvAttachShm(base   + MMAP_OC_VRB_TAIL_1ST_OFFSET,
 			shm,
-			offset + FILE_OS_VRB_TAIL_OFFSET,
-			TAIL_SIZE(length)) == -1)
+			offset + FILE_OC_VRB_TAIL_OFFSET,
+			VRB_TAIL_SIZE(length)) == -1)
 	{
 	    THROW(e0, "gvAttachShm");
 	}
 
-	if (gvAttachShm(base   + MMAP_OS_VRB_TAIL_2ND_OFFSET(length),
+	if (gvAttachShm(base   + MMAP_OC_VRB_TAIL_2ND_OFFSET(length),
 			shm,
-			offset + FILE_OS_VRB_TAIL_OFFSET,
-			TAIL_SIZE(length)) == -1)
+			offset + FILE_OC_VRB_TAIL_OFFSET,
+			VRB_TAIL_SIZE(length)) == -1)
 	{
 	    THROW(e0, "gvAttachShm");
 	}
 
-	if (gvAttachShm(base   + MMAP_IS_VRB_TAIL_1ST_OFFSET(length),
+	if (gvAttachShm(base   + MMAP_IC_VRB_TAIL_1ST_OFFSET(length),
 			shm,
-			offset + FILE_IS_VRB_TAIL_OFFSET(length),
-			TAIL_SIZE(length)) == -1)
+			offset + FILE_IC_VRB_TAIL_OFFSET(length),
+			VRB_TAIL_SIZE(length)) == -1)
 	{
 	    THROW(e0, "gvAttachShm");
 	}
 
-	if (gvAttachShm(base   + MMAP_IS_VRB_TAIL_2ND_OFFSET(length),
+	if (gvAttachShm(base   + MMAP_IC_VRB_TAIL_2ND_OFFSET(length),
 			shm,
-			offset + FILE_IS_VRB_TAIL_OFFSET(length),
-			TAIL_SIZE(length)) == -1)
+			offset + FILE_IC_VRB_TAIL_OFFSET(length),
+			VRB_TAIL_SIZE(length)) == -1)
 	{
 	    THROW(e0, "gvAttachShm");
 	}
@@ -448,84 +447,84 @@ static void
 }
 
 static int
-initStreams(struct Stream *os,
-            struct Stream *is,
+initChanels(struct Chanel *oc,
+            struct Chanel *ic,
             size_t         length)
 {
-    vrb_p osVrbHead = &os->shm->vrbHead;
-    vrb_p isVrbHead = &is->shm->vrbHead;
+    vrb_p ocVrbHead = &oc->shm->vrbHead;
+    vrb_p icVrbHead = &ic->shm->vrbHead;
 
-    osVrbHead->lower_ptr = 0;
-    osVrbHead->upper_ptr = (void *)VRB_TAIL_SIZE(length);
-    osVrbHead->first_ptr = 0;
-    osVrbHead->last_ptr  = 0;
-    osVrbHead->mem_ptr   = 0;
-    osVrbHead->buf_size  = VRB_TAIL_SIZE(length);
-    vrb_set_mmap(osVrbHead);
+    ocVrbHead->lower_ptr = 0;
+    ocVrbHead->upper_ptr = (void *)VRB_TAIL_SIZE(length);
+    ocVrbHead->first_ptr = 0;
+    ocVrbHead->last_ptr  = 0;
+    ocVrbHead->mem_ptr   = 0;
+    ocVrbHead->buf_size  = VRB_TAIL_SIZE(length);
+    vrb_set_mmap(ocVrbHead);
 
-    isVrbHead->lower_ptr = 0;
-    isVrbHead->upper_ptr = (void *)VRB_TAIL_SIZE(length);
-    isVrbHead->first_ptr = 0;
-    isVrbHead->last_ptr  = 0;
-    isVrbHead->mem_ptr   = 0;
-    isVrbHead->buf_size  = VRB_TAIL_SIZE(length);
-    vrb_set_mmap(isVrbHead);
+    icVrbHead->lower_ptr = 0;
+    icVrbHead->upper_ptr = (void *)VRB_TAIL_SIZE(length);
+    icVrbHead->first_ptr = 0;
+    icVrbHead->last_ptr  = 0;
+    icVrbHead->mem_ptr   = 0;
+    icVrbHead->buf_size  = VRB_TAIL_SIZE(length);
+    vrb_set_mmap(icVrbHead);
 
     return 0;
 }
 
 static int
-initSyncPrimitives(struct Stream *os,
-                   struct Stream *is)
+initSyncPrimitives(struct Chanel *oc,
+                   struct Chanel *ic)
 {
     TRY
     {
-        if (gvCreateLock(&os->shm->exclusiveAccess) == NULL)
+        if (gvCreateLock(&oc->shm->exclusiveAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateCondVar(&os->shm->dataAvailable) == NULL)
+        if (gvCreateCondVar(&oc->shm->dataAvailable) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
         }
 
-        if (gvCreateLock(&os->shm->dataAvailableAccess) == NULL)
+        if (gvCreateLock(&oc->shm->dataAvailableAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateCondVar(&os->shm->spaceAvailable) == NULL)
+        if (gvCreateCondVar(&oc->shm->spaceAvailable) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
         }
 
-        if (gvCreateLock(&os->shm->spaceAvailableAccess) == NULL)
+        if (gvCreateLock(&oc->shm->spaceAvailableAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateLock(&is->shm->exclusiveAccess) == NULL)
+        if (gvCreateLock(&ic->shm->exclusiveAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateCondVar(&is->shm->dataAvailable) == NULL)
+        if (gvCreateCondVar(&ic->shm->dataAvailable) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
         }
 
-        if (gvCreateLock(&is->shm->dataAvailableAccess) == NULL)
+        if (gvCreateLock(&ic->shm->dataAvailableAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateCondVar(&is->shm->spaceAvailable) == NULL)
+        if (gvCreateCondVar(&ic->shm->spaceAvailable) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
         }
 
-        if (gvCreateLock(&is->shm->spaceAvailableAccess) == NULL)
+        if (gvCreateLock(&ic->shm->spaceAvailableAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
@@ -538,13 +537,13 @@ initSyncPrimitives(struct Stream *os,
     return 0;
 }
 
-GVshmtransportptr
-gvCreateShmTransport(GVshmptr shm,
-		     size_t   offset,
-		     size_t   length)
+GVtransportptr
+gvCreateShmStreamTransport(GVshmptr shm,
+			   size_t   offset,
+			   size_t   length)
 {
-    struct Stream    *is;
-    struct Stream    *os;
+    struct Chanel    *ic;
+    struct Chanel    *oc;
     struct Transport *trp;
 
     TRY
@@ -571,32 +570,32 @@ gvCreateShmTransport(GVshmptr shm,
 	    THROW(e0, "attachShmRegions");
 	}
 
-	if ((os = malloc(sizeof(struct Stream))) == NULL)
+	if ((oc = malloc(sizeof(struct Chanel))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	if ((is = malloc(sizeof(struct Stream))) == NULL)
+	if ((ic = malloc(sizeof(struct Chanel))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	os->shm = &trp->shm->os;
-	os->app.vrbTail = trp->shm + MMAP_OS_VRB_TAIL_1ST_OFFSET;
+	oc->shm = &trp->shm->oc;
+	oc->app.vrbTail = (void *)trp->shm + MMAP_OC_VRB_TAIL_1ST_OFFSET;
 
-	is->shm = &trp->shm->is;
-	is->app.vrbTail = trp->shm + MMAP_IS_VRB_TAIL_1ST_OFFSET(length);
+	ic->shm = &trp->shm->ic;
+	ic->app.vrbTail = (void *)trp->shm + MMAP_IC_VRB_TAIL_1ST_OFFSET(length);
 
 	if (trp->shm->state == STATE_UNINITIALIZED)
 	{
 	    trp->shm->state = STATE_INITIALIZED;
 
-	    if (initStreams(os, is, length) == -1)
+	    if (initChanels(oc, ic, length) == -1)
             {
-                THROW(e0, "initStreams");
+                THROW(e0, "initChanels");
             }
 
-            if (initSyncPrimitives(os, is) == -1)
+            if (initSyncPrimitives(oc, ic) == -1)
             {
                 THROW(e0, "initSyncPrimitives");
             }
@@ -606,11 +605,11 @@ gvCreateShmTransport(GVshmptr shm,
 	trp->base.offset = offset;
 	trp->base.length = length;
 
-	trp->base.base.os = (GVstreamptr) os;
-	trp->base.base.is = (GVstreamptr) is;
+	trp->base.base.oc = (GVchanelptr) oc;
+	trp->base.base.ic = (GVchanelptr) ic;
 
-	trp->base.base.os->exclusiveAccess = &os->shm->exclusiveAccess;
-	trp->base.base.is->exclusiveAccess = &is->shm->exclusiveAccess;
+	trp->base.base.oc->exclusiveAccess = &oc->shm->exclusiveAccess;
+	trp->base.base.ic->exclusiveAccess = &ic->shm->exclusiveAccess;
 
 	trp->base.base.read  = readFunc;
 	trp->base.base.write = writeFunc;
@@ -622,24 +621,26 @@ gvCreateShmTransport(GVshmptr shm,
 	return NULL;
     }
 
-    return (GVshmtransportptr) trp;
+    return (GVtransportptr) trp;
 }
 
 int
-gvDestroyShmTransport(GVshmtransportptr transport)
+gvDestroyShmStreamTransport(GVtransportptr transport)
 {
-    size_t length = transport->length;
+    GVshmstreamtrpptr shmStreamTrp = (GVshmstreamtrpptr) transport;
+
+    size_t length = shmStreamTrp->length;
 
     TRY
     {
-        if (munmap(castTransport(transport)->shm, length + TAIL_SIZE(length)))
+        if (munmap(castTransport(shmStreamTrp)->shm, length + TAIL_SIZE(length)))
         {
             THROW(e0, "munmap");
         }
 
-        free(transport->base.os);
-        free(transport->base.is);
-        free(transport);
+        free(shmStreamTrp->base.oc);
+        free(shmStreamTrp->base.ic);
+        free(shmStreamTrp);
     }
     CATCH (e0)
     {

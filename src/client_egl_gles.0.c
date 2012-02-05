@@ -23,6 +23,8 @@
 #include "error.h"
 #include "heap_manager.h"
 #include "janitor.h"
+#include "shared_memory.h"
+#include "shm_stream_transport.h"
 
 #define TRANSPORT_LENGTH 208896 // (51 * 4096)
 // #define TRANSPORT_LENGTH 12288 // (3 * 4096)
@@ -59,9 +61,10 @@ createContext(EGLDisplay display, EGLContext context)
 	    THROW(e0, "gvBonjour");
 	}
 
-	if ((transport = gvCreateTransport(vmShm,
-					   transportOffset,
-					   TRANSPORT_LENGTH)) == NULL)
+	if ((transport
+	     = gvCreateShmStreamTransport(vmShm,
+					  transportOffset,
+					  TRANSPORT_LENGTH)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}

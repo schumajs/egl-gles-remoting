@@ -15,14 +15,14 @@
 #include "error.h"
 #include "heap_manager.h"
 #include "lock.h"
-#include "transport.h"
 #include "shared_memory.h"
+#include "shm_stream_transport.h"
 
 static int            processInitiated = 0;
 
 static GVtransportptr transport;
-static GVlockptr      callLock;
-static GVlockptr      returnLock;
+static GVlockptr      ocLock;
+static GVlockptr      icLock;
 
 static int
 initHeapMgrClient()
@@ -40,16 +40,17 @@ initHeapMgrClient()
 
 	heapMgrShm->id   = heapMgrShmFd;
 	heapMgrShm->size = heapMgrShmSize;
-
-	if ((transport = gvCreateTransport(heapMgrShm,
-					   0,
-					   heapMgrShmSize)) == NULL)
+	
+	if ((transport
+	     = gvCreateShmStreamTransport(heapMgrShm,
+					  0,
+					  heapMgrShmSize)) == NULL)
 	{
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	callLock = transport->callBuffer->exclusiveAccess;
-	returnLock = transport->returnBuffer->exclusiveAccess;
+	ocLock = transport->oc->exclusiveAccess;
+	icLock = transport->ic->exclusiveAccess;
     }
     CATCH (e0)
     {
@@ -76,13 +77,13 @@ gvAlloc(size_t length)
 
     initIfNotDoneAlready();
 
-    callId = gvStartSending(transport, callLock, GV_CMDID_HMGR_ALLOC);
+    callId = gvStartSending(transport, ocLock, GV_CMDID_HMGR_ALLOC);
     gvSendData(transport, &length, sizeof(size_t));
-    gvStopSending(transport, callLock);
+    gvStopSending(transport, ocLock);
 
-    gvStartReceiving(transport, returnLock, callId);
+    gvStartReceiving(transport, icLock, callId);
     gvReceiveData(transport, &offset, sizeof(size_t));
-    gvStopReceiving(transport, returnLock);
+    gvStopReceiving(transport, icLock);
 
     return offset;
 }
@@ -95,13 +96,13 @@ gvFree(size_t offset)
 
     initIfNotDoneAlready();
 
-    callId = gvStartSending(transport, callLock, GV_CMDID_HMGR_FREE);
+    callId = gvStartSending(transport, ocLock, GV_CMDID_HMGR_FREE);
     gvSendData(transport, &offset, sizeof(size_t));
-    gvStopSending(transport, callLock);
+    gvStopSending(transport, ocLock);
 
-    gvStartReceiving(transport, returnLock, callId);
+    gvStartReceiving(transport, icLock, callId);
     gvReceiveData(transport, &status, sizeof(int));
-    gvStopReceiving(transport, returnLock);
+    gvStopReceiving(transport, icLock);
 
     return status;
 }

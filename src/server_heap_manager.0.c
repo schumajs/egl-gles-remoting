@@ -21,14 +21,14 @@
 #include "server_dispatcher.h"
 #include "server_serializer.h"
 #include "server_heap_manager.h"
-#include "transport.h"
+#include "shm_stream_transport.h"
 
 /* ****************************************************************************
- * Context
+ * HeapMgr implementation
  */
 
 struct HeapMgr {
-    struct GVheapmgr  public;
+    struct GVheapmgr  base;
 
     void             *vmShmAddr;
     mspace            vmHeap;
@@ -91,7 +91,7 @@ void _gvAlloc()
 static
 void _gvFree()
 {
-    GVtransportptr transport = heapMgr->heapMgrTransport;
+    GVtransportptr transport = (GVtransportptr) heapMgr->heapMgrTransport;
 
     GVcallid       callId;
     int            status;
@@ -146,12 +146,13 @@ void createHeapMgrResources()
     TRY
     {
 	/* Create transport */
-	if ((heapMgr->heapMgrTransport
-	     = gvCreateTransport(heapMgr->public.heapMgrShm,
-				 0,
-				 heapMgr->public.heapMgrShm->size)) == NULL)
+	if ((heapMgr->heapMgrTransport =
+	     (GVtransportptr) gvCreateShmStreamTransport(
+		 heapMgr->base.heapMgrShm,
+		 0,
+		 heapMgr->base.heapMgrShm->size)) == NULL)
 	{
-	    THROW(e0, "gvCreateTransport");
+	    THROW(e0, "gvCreateShmStreamTrp");
 	}
     }
     CATCH (e0)
@@ -168,7 +169,7 @@ void createVmResources()
 	/* Find an appropriate logical memory region */
 	if ((heapMgr->vmShmAddr
 	     = mmap(NULL,
-		    heapMgr->public.vmShm->size,
+		    heapMgr->base.vmShm->size,
 		    PROT_NONE,
 		    MAP_ANONYMOUS | MAP_PRIVATE,
 		    -1,
@@ -180,9 +181,9 @@ void createVmResources()
 
 	/* Attach shared memory to that region */
 	if (gvAttachShm(heapMgr->vmShmAddr,
-			heapMgr->public.vmShm,
+			heapMgr->base.vmShm,
 			0,
-			heapMgr->public.vmShm->size) == -1)
+			heapMgr->base.vmShm->size) == -1)
 	{
 	    THROW(e0, "gvAttachShm");
 	}
@@ -190,7 +191,7 @@ void createVmResources()
 	/* Create dlmalloc mspace */
 	if ((heapMgr->vmHeap
 	     = create_mspace_with_base(heapMgr->vmShmAddr,
-				       heapMgr->public.vmShm->size,
+				       heapMgr->base.vmShm->size,
 				       0)) == NULL)
 	{
 	    THROW(e0, "create_mspace_with_base");
@@ -208,13 +209,13 @@ void destroyHeapMgrResources()
     TRY
     {
 	/* Destroy transport (+ detach shared memory) */
-	if (gvDestroyTransport(heapMgr->heapMgrTransport) == -1)
+	if (gvDestroyShmStreamTransport(heapMgr->heapMgrTransport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}
 
 	/* Destroy shared memory */
-	if (gvDestroyShm(heapMgr->public.heapMgrShm) == -1)
+	if (gvDestroyShm(heapMgr->base.heapMgrShm) == -1)
 	{
 	    THROW(e0, "gvDestroyShm");
 	}
@@ -238,15 +239,15 @@ void destroyVmResources()
 
 	/* Detach shared memory */
 	if (gvDetachShm(heapMgr->vmShmAddr,
-			heapMgr->public.vmShm,
+			heapMgr->base.vmShm,
 			0,
-			heapMgr->public.vmShm->size) == -1)
+			heapMgr->base.vmShm->size) == -1)
 	{
 	    THROW(e0, "gvDetachShm");
 	}
 
 	/* Destroy shared memory*/
-	if (gvDestroyShm(heapMgr->public.vmShm) == -1)
+	if (gvDestroyShm(heapMgr->base.vmShm) == -1)
 	{
 	    THROW(e0, "gvDestroyShm");
 	}	
@@ -284,12 +285,12 @@ gvStartHeapMgr(size_t heapSize)
 	 * descriptor will be available to child processes.
 	 */
 
-	if ((heapMgr->public.vmShm = gvCreateShm(heapSize)) == NULL)
+	if ((heapMgr->base.vmShm = gvCreateShm(heapSize)) == NULL)
 	{
 	    THROW(e0, "gvCreateShm");
 	}
 
-	if ((heapMgr->public.heapMgrShm = gvCreateShm(3 * 4096)) == NULL)
+	if ((heapMgr->base.heapMgrShm = gvCreateShm(3 * 4096)) == NULL)
 	{
 	    THROW(e0, "gvCreateShm");
 	}	
@@ -299,6 +300,8 @@ gvStartHeapMgr(size_t heapSize)
 	    /*
 	     * Memory manager process
 	     */
+
+	    pthread_t dispatchThread;
 
 	    /* Register "shutdown hook" */
 	    if (signal(SIGTERM, sigtermHandler) == SIG_ERR)
@@ -313,11 +316,15 @@ gvStartHeapMgr(size_t heapSize)
 	    createHeapMgrResources();
 
 	    /* Start dispatching loop */	
-	    if (gvDispatchLoop(heapMgr->heapMgrTransport,
-			       gvHeapMgrJumpTable,
-			       1) == -1)
+	    if ((dispatchThread = gvDispatchLoop(heapMgr->heapMgrTransport,
+						 gvHeapMgrJumpTable)) == 0)
 	    {
 		THROW(e1, "gvDispatchLoop");
+	    }
+
+	    if (pthread_join(dispatchThread, NULL) != 0)
+	    {
+		THROW(e0, "pthread_join");
 	    }
 
 	    return NULL;

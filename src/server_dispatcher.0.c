@@ -59,14 +59,14 @@ static void
 
 	while (1)
 	{
-	    // printf("PID %i THREAD %ul IS LISTENING\n", getpid(), offsetState->thread);
+	    // printf("PID %i THREAD %ul IS LISTENING\n", getpid(), pthread_self());
 	    
 	    if ((cmdId = gvStartReceiving(transport, NULL)) == -1)
 	    {
 		THROW(e0, "gvStartReceiving");
 	    }
 
-	    // printf("PID %i THREAD %ul GOT %i\n", getpid(), offsetState->thread, cmdId);
+	    // printf("PID %i THREAD %ul GOT %i\n", getpid(), pthread_self(), cmdId);
 
 	    jumpTable[cmdId]();
 	}
@@ -79,7 +79,7 @@ static void
     return NULL;
 }
 
-pthread_t
+unsigned long
 gvDispatchLoop(GVtransportptr transport,
 	       GVdispatchfunc jumpTable[])
 {

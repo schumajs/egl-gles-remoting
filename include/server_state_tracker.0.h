@@ -16,11 +16,11 @@
 #include <unistd.h>
 #include <GLES2/gl2.h>
 
-#include "transport.h"
+#include "shm_stream_transport.h"
 
 struct GVoffsetstate {
-    pthread_t      thread;
-    GVtransportptr transport;
+    unsigned long     thread;
+    GVshmstreamtrpptr transport;
 };
 
 typedef struct GVoffsetstate *GVoffsetstateptr;

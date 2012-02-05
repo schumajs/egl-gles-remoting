@@ -27,9 +27,9 @@ gvStartReceiving(GVtransportptr transport,
 
     TRY
     {
-	if (gvRead(transport->callBuffer, &cmdId, sizeof(GVcmdid)) == -1)
+	if (transport->read(transport->oc, &cmdId, sizeof(GVcmdid)) == -1)
 	{
-	    THROW(e0, "gvRead");
+	    THROW(e0, "read");
 	}
     }
     CATCH (e0)
@@ -55,9 +55,9 @@ gvStartSending(GVtransportptr transport,
     
     TRY 
     {
-	if (gvWrite(transport->returnBuffer, &callId, sizeof(GVcallid)) == -1)
+	if (transport->write(transport->ic, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e0, "gvWrite");
+	    THROW(e0, "write");
 	}
     }
     CATCH (e0)
@@ -82,9 +82,9 @@ gvReceiveData(GVtransportptr  transport,
 {
     TRY
     {
-	if (gvRead(transport->callBuffer, toAddr, length) == -1)
+	if (transport->read(transport->oc, toAddr, length) == -1)
 	{
-	    THROW(e0, "gvRead");
+	    THROW(e0, "read");
 	}
     }
     CATCH (e0)
@@ -102,9 +102,9 @@ gvSendData(GVtransportptr  transport,
 {
     TRY
     {
-	if (gvWrite(transport->returnBuffer, fromAddr, length) == -1)
+	if (transport->write(transport->ic, fromAddr, length) == -1)
 	{
-	    THROW(e0, "gvWrite");
+	    THROW(e0, "write");
 	}
     }
     CATCH (e0)

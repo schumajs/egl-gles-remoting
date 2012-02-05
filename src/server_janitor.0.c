@@ -18,7 +18,7 @@
 #include "server_janitor.h"
 #include "server_serializer.h"
 #include "server_state_tracker.0.h"
-#include "transport.h"
+#include "shm_stream_transport.h"
 
 extern GVdispatchfunc eglGlesJumpTable[64];
 
@@ -144,7 +144,7 @@ sigtermHandler()
     TRY
     {
 	/* Destroy server transport (+ detach shared memory) */
-	if (gvDestroyTransport(janitor->janitorTransport) == -1)
+	if (gvDestroyShmStreamTransport(janitor->janitorTransport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}
@@ -189,8 +189,10 @@ gvStartJanitor(GVshmptr vmShm)
 	if (!(janitor->janitorPid = fork()))
 	{
 	    /*
-	     * Server process
+	     * Janitor process
 	     */
+
+	    pthread_t dispatchThread;
 
 	    /* Register "shutdown hook" */
 	    if (signal(SIGTERM, sigtermHandler) == SIG_ERR)
@@ -200,19 +202,24 @@ gvStartJanitor(GVshmptr vmShm)
 
 	    /* Create transport */
 	    if ((janitor->janitorTransport
-		 = gvCreateTransport(janitor->public.janitorShm,
-				     0,
-				     janitor->public.janitorShm->size)) == NULL)
+		 = (GVtransportptr) gvCreateShmStreamTransport(
+		     janitor->public.janitorShm,
+		     0,
+		     janitor->public.janitorShm->size)) == NULL)
 	    {
 		THROW(e1, "gvCreateTransport");
 	    }
 
 	    /* Start dispatching loop */	
-	    if (gvDispatchLoop(janitor->janitorTransport,
-			       gvJanitorJumpTable,
-			       1) == -1)
+	    if ((dispatchThread = gvDispatchLoop(janitor->janitorTransport,
+						 gvJanitorJumpTable)) == -1)
 	    {
 		THROW(e1, "gvDispatchLoop");
+	    }
+
+	    if (pthread_join(dispatchThread, NULL) != 0)
+	    {
+		THROW(e0, "pthread_join");
 	    }
 
 	    return NULL;
@@ -246,43 +253,37 @@ int
 gvBonjour(size_t offset,
 	  size_t length)
 {
-    pthread_t         dispatchLoopThread; 
-    GVoffsetstateptr  offsetState;
-    GVshmtransportptr transport;
+    GVoffsetstateptr state;
+    GVtransportptr   transport;
  
     TRY
     {
 	/* Create transport */
-	if ((transport = gvCreateShmTransport(janitor->public.vmShm,
-					      offset,
-					      length)) == NULL)
+	if ((transport
+	     = gvCreateShmStreamTransport(janitor->public.vmShm,
+					  offset,
+					  length)) == NULL)
 	{
-	    THROW(e0, "gvCreateTransport");
+	    THROW(e0, "gvCreateShmStreamTransport");
 	}
 
-	/* Start dispatching loop */	
-	if ((dispatchLoopThread = gvDispatchLoop(transport,
-						 eglGlesJumpTable)) == -1)
-	{
-	    THROW(e0, "gvDispatchLoop");
-	}
-
-	if ((offsetState = malloc(sizeof(struct GVoffsetstate))) == NULL)
+	if ((state = malloc(sizeof(struct GVoffsetstate))) == NULL)
 	{
 	    THROW(e0, "malloc");
 	}
 
-	offsetState->thread    = dispatchLoopThread;
-	offsetState->transport = transport;
+	state->transport = (GVshmstreamtrpptr) transport;
 
-	if (gvPutOffsetState(transport->offset, offsetState) == -1)
+	/* Start dispatching loop */	
+	if ((state->thread
+	     = gvDispatchLoop(transport, eglGlesJumpTable)) == -1)
 	{
-	    THROW(e0, "gvPutProcessState");
+	    THROW(e0, "gvDispatchLoop");
 	}
 
-	if (pthread_join(thread, NULL) != 0)
+	if (gvPutOffsetState(state->transport->offset, state) == -1)
 	{
-	    THROW(e0, "pthread_join");
+	    THROW(e0, "gvPutOffsetState");
 	}
     }
     CATCH (e0)
@@ -296,26 +297,27 @@ gvBonjour(size_t offset,
 int
 gvAuRevoir(size_t offset)
 {
-    GVoffsetstateptr offsetState;
+    GVoffsetstateptr state;
 
     TRY
     {
-	if ((offsetState = gvGetOffsetState(offset)) == NULL)
+	if ((state = gvGetOffsetState(offset)) == NULL)
 	{
-	    THROW(e0, "gvGetProcessState");
+	    THROW(e0, "gvGetOffsetState");
 	}
 
 	if (gvDelOffsetState(offset) == -1)
 	{
-	    THROW(e0, "gvDelJanitorState");
+	    THROW(e0, "gvDelOffsetState");
 	}
 
-	if (pthread_cancel(offsetState->thread) != 0)
+	if (pthread_cancel(state->thread) != 0)
 	{
 	    THROW(e0, "pthread_cancel");
 	}
 
-	if (gvDestroyTransport(offsetState->transport) == -1)
+	if (gvDestroyShmStreamTransport(
+		(GVtransportptr) state->transport) == -1)
 	{
 	    THROW(e0, "gvDestroyTransport");
 	}

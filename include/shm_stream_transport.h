@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    shared_memory_transport.h
+ * \file    shm_stream_transport.h
  * \brief   
  * 
  * \date    December 20, 2011
@@ -9,12 +9,17 @@
  * \details
  */
 
-#ifndef SHARED_MEMORY_TRANSPORT_H_
-#define SHARED_MEMORY_TRANSPORT_H_
+#ifndef SHM_STREAM_TRANSPORT_H_
+#define SHM_STREAM_TRANSPORT_H_
 
+#include "shared_memory.h"
 #include "transport.h"
 
-struct GVshmtransport {
+struct GVchanel {
+    GVlockptr exclusiveAccess;
+};
+
+struct GVshmstreamtrp {
     struct GVtransport base;
 
     GVshmptr           shm;
@@ -22,7 +27,7 @@ struct GVshmtransport {
     size_t             length;
 };
 
-typedef struct GVshmtransport *GVshmtransportptr;
+typedef struct GVshmstreamtrp *GVshmstreamtrpptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -32,10 +37,10 @@ typedef struct GVshmtransport *GVshmtransportptr;
  * \param  [in] length
  * \return 
  */
-GVshmtransportptr
-gvCreateShmTransport(GVshmptr shm,
-		     size_t   offset,
-		     size_t   length);
+GVtransportptr
+gvCreateShmStreamTransport(GVshmptr shm,
+			   size_t   offset,
+			   size_t   length);
 
 /*! ***************************************************************************
  * \brief 
@@ -44,7 +49,6 @@ gvCreateShmTransport(GVshmptr shm,
  * \return 
  */
 int
-gvDestroyShmTransport(GVshmtransportptr transport);
+gvDestroyShmStreamTransport(GVtransportptr transport);
 
-
-#endif /* SHARED_MEMORY_TRANSPORT_H */
+#endif /* SHM_STREAM_TRANSPORT_H */

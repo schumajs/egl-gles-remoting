@@ -9,6 +9,8 @@
  * \details
  */
 
+#include <unistd.h>
+
 #include "client_serializer.h"
 #include "error.h"
 #include "sleep.h"
@@ -48,14 +50,14 @@ gvStartSending(GVtransportptr  transport,
 	    callId = getCantorPair(pid, tid);
 	}
 
-	if (gvWrite(transport->callBuffer, &cmdId, sizeof(GVcmdid)) == -1)
+	if (transport->write(transport->oc, &cmdId, sizeof(GVcmdid)) == -1)
 	{
-	    THROW(e1, "gvWrite");
+	    THROW(e1, "write");
 	}
 
-	if (gvWrite(transport->callBuffer, &callId, sizeof(GVcallid)) == -1)
+	if (transport->write(transport->oc, &callId, sizeof(GVcallid)) == -1)
 	{
-	    THROW(e1, "gvWrite");
+	    THROW(e1, "write");
 	}
     }
     CATCH (e0)
@@ -105,9 +107,6 @@ gvStartReceiving(GVtransportptr transport,
 		 GVlockptr      lock,
 		 GVcallid       callId)
 {
-    void   *dataPtr;
-    size_t  dataLength;
-
     TRY
     {
 	while (1)
@@ -120,21 +119,15 @@ gvStartReceiving(GVtransportptr transport,
 		}
 	    }
 
-	    dataLength = gvDataLength(transport->returnBuffer);
-
-	    if (dataLength >= sizeof(GVcallid))
+	    if (*((GVcallid *)transport->peek(transport->ic,
+					      sizeof(GVcallid))) == callId)
 	    {
-		dataPtr = gvDataPtr(transport->returnBuffer);
-	    
-		if (*((GVcallid *)dataPtr) == callId)
+		if (transport->skip(transport->ic, sizeof(GVcallid)) == -1)
 		{
-		    if (gvTake(transport->returnBuffer, sizeof(GVcallid)) == -1)
-		    {
-			THROW(e1, "gvTake");
-		    }
-
-		    break;
+		    THROW(e1, "skip");
 		}
+
+		break;
 	    }
 
 	    if (lock != NULL)
@@ -144,8 +137,6 @@ gvStartReceiving(GVtransportptr transport,
 		    THROW(e1, "gvRelease");
 		}
 	    }
-
-	    gvSleep(0, 1000);
         }
     }
     CATCH (e0)
@@ -197,9 +188,9 @@ gvReceiveData(GVtransportptr  transport,
 {
     TRY
     {
-	if (gvRead(transport->returnBuffer, toAddr, length) == -1)
+	if (transport->read(transport->ic, toAddr, length) == -1)
 	{
-	    THROW(e0, "gvRead");
+	    THROW(e0, "read");
 	}
     }
     CATCH (e0)
@@ -217,9 +208,9 @@ gvSendData(GVtransportptr  transport,
 {
     TRY
     {
-	if (gvWrite(transport->callBuffer, fromAddr, length) == -1)
+	if (transport->write(transport->oc, fromAddr, length) == -1)
 	{
-	    THROW(e0, "gvWrite");
+	    THROW(e0, "write");
 	}
     }
     CATCH (e0)
