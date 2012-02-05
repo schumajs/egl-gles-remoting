@@ -10,6 +10,7 @@
  */
 
 #include <stdlib.h>
+#include <sys/mman.h>
 
 #include "error.h"
 #include "serializer.h"
@@ -33,7 +34,8 @@ void
 	
 	if (length > 0)
 	{
-	    if ((toAddr = malloc(length)) == NULL)
+	    /* TODO what allocator should be used? */
+	    if ((toAddr = calloc(1, length)) == NULL)
 	    {
 		THROW(e0, "malloc");
 	    }
