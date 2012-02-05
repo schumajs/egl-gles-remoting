@@ -17,18 +17,25 @@
 typedef struct GVchanel *GVchanelptr;
 
 typedef int (*GVreadfunc)(GVchanelptr, void*, size_t);
+typedef void *(*GVreadptrfunc)(GVchanelptr);
+typedef int (*GVtakefunc)(GVchanelptr, size_t);
 typedef int (*GVwritefunc)(GVchanelptr, const void*, size_t);
-typedef void* (*GVpeekfunc)(GVchanelptr, size_t);
-typedef int (*GVskipfunc)(GVchanelptr, size_t);
+typedef void *(*GVwriteptrfunc)(GVchanelptr);
+typedef int (*GVgivefunc)(GVchanelptr, size_t);
+typedef void *(*GVpeekfunc)(GVchanelptr, size_t);
+
 
 struct GVtransport {
-    GVchanelptr oc;
-    GVchanelptr ic;
+    GVchanelptr    oc;
+    GVchanelptr    ic;
 
-    GVreadfunc  read;
-    GVwritefunc write;
-    GVpeekfunc  peek;
-    GVskipfunc  skip;
+    GVreadfunc     read;
+    GVreadptrfunc  readPtr;
+    GVtakefunc     take;
+    GVwritefunc    write;
+    GVwriteptrfunc writePtr;
+    GVgivefunc     give;
+    GVpeekfunc     peek;
 };
 
 typedef struct GVtransport *GVtransportptr;

@@ -122,7 +122,7 @@ gvStartReceiving(GVtransportptr transport,
 	    if (*((GVcallid *)transport->peek(transport->ic,
 					      sizeof(GVcallid))) == callId)
 	    {
-		if (transport->skip(transport->ic, sizeof(GVcallid)) == -1)
+		if (transport->take(transport->ic, sizeof(GVcallid)) == -1)
 		{
 		    THROW(e1, "skip");
 		}

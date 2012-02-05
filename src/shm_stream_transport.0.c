@@ -318,7 +318,7 @@ static void
 }
 
 static int
-skipFunc(GVchanelptr chanel,
+takeFunc(GVchanelptr chanel,
 	 size_t      length)
 {
     TRY
@@ -612,9 +612,9 @@ gvCreateShmStreamTransport(GVshmptr shm,
 	trp->base.base.ic->exclusiveAccess = &ic->shm->exclusiveAccess;
 
 	trp->base.base.read  = readFunc;
+	trp->base.base.take  = takeFunc;
 	trp->base.base.write = writeFunc;
 	trp->base.base.peek  = peekFunc;
-	trp->base.base.skip  = skipFunc;
     }
     CATCH (e0)
     {
