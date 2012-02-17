@@ -7,8 +7,6 @@
 #   sharedlib
 #   clientlib 
 #   serverlib
-#   dashboard
-#   eval*
 
 ###############################################################################
 # Archiver / compiler / linker
@@ -89,7 +87,7 @@ $(CL_TAR) $(SL_TAR) $(SH_TAR): CFLAGS += -fPIC
 # All
 #
 
-all: $(SH_TAR) $(CL_TAR) $(SL_TAR) dashboard eval1
+all: $(SH_TAR) $(CL_TAR) $(SL_TAR)
 
 #
 # Phony
@@ -123,25 +121,6 @@ $(SL_TAR): $(SH_TAR) $(SL_OBJS)
 	$(CC) -shared -Wl,-rpath,.,-soname,$(SL_BIN_MAJ) -o $(SL_BIN_REV) $(SL_OBJS) $(SH_BIN_LIB) -ldlmalloc -lEGL -lGLESv2
 	ln -sf $(SL_BIN_REV) $(SL_BIN_MAJ)
 	ln -sf $(SL_BIN_REV) $(SL_BIN_LIB)
-
-#
-# Dashboard
-#
-
-dashboard: $(SH_TAR) $(SL_TAR)
-	$(CC) src/dashboard.c  -o gvdb $(SH_BIN_LIB) $(SL_BIN_LIB) -Iinclude -lncurses -Wl,-rpath,.
-
-#
-# Evaluation
-#
-
-EVAL_OBJS := src/evaluation
-
-#eval2: $(CL_TAR)
-#	$(CC) $(EVAL_OBJS)/eval1.c $(EVAL_OBJS)/eval_util.c $(EVAL_OBJS)/esShader.c $(EVAL_OBJS)/esUtil.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
-
-eval1: $(CL_TAR)
-	$(CC) $(EVAL_OBJS)/Hello_Triangle.c  $(EVAL_OBJS)/esShader.c $(EVAL_OBJS)/esUtil.c -o eval1 $(SH_BIN_LIB) $(CL_BIN_LIB) -Iinclude -lm -lX11 -Wl,-rpath,.
 
 #
 # Compilation
