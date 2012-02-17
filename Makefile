@@ -136,9 +136,7 @@ $(SL_TAR): $(SH_TAR) $(SL_OBJS)
 clean:
 	rm -f $(SH_OBJS) $(SH_BIN_LIB) $(SH_BIN_MAJ) $(SH_BIN_REV) 
 	rm -f $(CL_OBJS) $(CL_BIN_LIB) $(CL_BIN_MAJ) $(CL_BIN_REV) 
-	rm -f $(SL_OBJS) $(SL_BIN_LIB) $(SL_BIN_MAJ) $(SL_BIN_REV) 
-	rm -f src/dashboard.o gvdb
-	rm -f src/evaluation/eval*.o eval*
+	rm -f $(SL_OBJS) $(SL_BIN_LIB) $(SL_BIN_MAJ) $(SL_BIN_REV)
 
 cleanall: clean
 	rm -R docs
