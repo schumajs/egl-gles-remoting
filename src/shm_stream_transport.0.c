@@ -293,7 +293,7 @@ static void
                 THROW(e0, "gvAcquire");
             }
 
-            while ((dataLength = vrb_data_len(vrbHead)) <= numBytes)
+            while ((dataLength = vrb_data_len(vrbHead)) < numBytes)
             {
                 if (gvWait(dataAvailable, dataAvailableAccess) == -1)
                 {
