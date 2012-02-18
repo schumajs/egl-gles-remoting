@@ -85,8 +85,8 @@ readFunc(GVchanelptr  chanel,
     GVcondvarptr  dataAvailable        = &castChanel(chanel)->shm->dataAvailable;
     GVlockptr     dataAvailableAccess  = &castChanel(chanel)->shm->dataAvailableAccess;
 
-    GVcondvarptr  spaceAvailable       = &castChanel(chanel)->shm->spaceAvailable;
-    GVlockptr     spaceAvailableAccess = &castChanel(chanel)->shm->spaceAvailableAccess;
+    GVcondvarptr  spaceAvailable        = &castChanel(chanel)->shm->spaceAvailable;
+    GVlockptr     spaceAvailableAccess  = &castChanel(chanel)->shm->spaceAvailableAccess;
 
     vrb_p         vrbHead              = &castChanel(chanel)->shm->vrbHead;
     void         *vrbTail              = castChanel(chanel)->app.vrbTail;
@@ -321,12 +321,31 @@ static int
 takeFunc(GVchanelptr chanel,
 	 size_t      length)
 {
+
+    GVcondvarptr spaceAvailable       = &castChanel(chanel)->shm->spaceAvailable;
+    GVlockptr    spaceAvailableAccess = &castChanel(chanel)->shm->spaceAvailableAccess;
+
     TRY
     {
         if (vrb_take(&castChanel(chanel)->shm->vrbHead, length) == -1)
         {
             THROW(e0, "vrb_take");
         }
+
+	if (gvAcquire(spaceAvailableAccess) == -1)
+	{
+	    THROW(e0, "gvRelease");
+	}
+
+	if (gvNotify(spaceAvailable) == -1)
+	{
+	    THROW(e0, "gvNotify");
+	}
+
+	if (gvRelease(spaceAvailableAccess) == -1)
+	{
+	    THROW(e0, "gvRelease");
+	}
     }
     CATCH (e0)
     {
