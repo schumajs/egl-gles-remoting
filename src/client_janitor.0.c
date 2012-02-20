@@ -49,8 +49,8 @@ initJanitorClient()
 	    THROW(e0, "gvCreateTransport");
 	}
 
-	ocLock = transport->oc->exclusiveAccess;
-	icLock = transport->ic->exclusiveAccess;
+	ocLock = transport->callChanel->exclusiveAccess;
+	icLock = transport->returnChanel->exclusiveAccess;
     }
     CATCH (e0)
     {

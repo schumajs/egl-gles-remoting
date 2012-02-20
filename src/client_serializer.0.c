@@ -50,12 +50,12 @@ gvStartSending(GVtransportptr  transport,
 	    callId = getCantorPair(pid, tid);
 	}
 
-	if (transport->write(transport->oc, &cmdId, sizeof(GVcmdid)) == -1)
+	if (transport->write(transport->callChanel, &cmdId, sizeof(GVcmdid)) == -1)
 	{
 	    THROW(e1, "write");
 	}
 
-	if (transport->write(transport->oc, &callId, sizeof(GVcallid)) == -1)
+	if (transport->write(transport->callChanel, &callId, sizeof(GVcallid)) == -1)
 	{
 	    THROW(e1, "write");
 	}
@@ -119,10 +119,10 @@ gvStartReceiving(GVtransportptr transport,
 		}
 	    }
 
-	    if (*((GVcallid *)transport->peek(transport->ic,
+	    if (*((GVcallid *)transport->peek(transport->returnChanel,
 					      sizeof(GVcallid))) == callId)
 	    {
-		if (transport->take(transport->ic, sizeof(GVcallid)) == -1)
+		if (transport->take(transport->returnChanel, sizeof(GVcallid)) == -1)
 		{
 		    THROW(e1, "skip");
 		}
@@ -188,7 +188,7 @@ gvReceiveData(GVtransportptr  transport,
 {
     TRY
     {
-	if (transport->read(transport->ic, toAddr, length) == -1)
+	if (transport->read(transport->returnChanel, toAddr, length) == -1)
 	{
 	    THROW(e0, "read");
 	}
@@ -208,7 +208,7 @@ gvSendData(GVtransportptr  transport,
 {
     TRY
     {
-	if (transport->write(transport->oc, fromAddr, length) == -1)
+	if (transport->write(transport->callChanel, fromAddr, length) == -1)
 	{
 	    THROW(e0, "write");
 	}
