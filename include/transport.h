@@ -26,8 +26,8 @@ typedef void *(*GVpeekfunc)(GVchanelptr, size_t);
 
 
 struct GVtransport {
-    GVchanelptr    oc;
-    GVchanelptr    ic;
+    GVchanelptr    callChanel;
+    GVchanelptr    returnChanel;
 
     GVreadfunc     read;
     GVreadptrfunc  readPtr;
