@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    shared_memory_transport.0.c
+ * \file    shm_stream_transport.0.c
  * \brief   
  * 
  * \date    December 20, 2011
@@ -18,6 +18,7 @@
 
 #include "cond_var.h"
 #include "error.h"
+#include "rwlock.h"
 #include "shared_memory.h"
 #include "shm_stream_transport.h"
 
@@ -40,9 +41,13 @@ struct Chanel {
 
 	GVlock    exclusiveAccess;
 
-	GVlock    condVarAccess;
 	GVcondvar notEmpty;
+	GVlock    notEmptyAccess;
+
 	GVcondvar notFull;
+	GVlock    notFullAccess;
+
+	GVrwlock  vrbHeadAccess;
     } *shm;
 
 };
@@ -73,7 +78,195 @@ struct Transport {
     ((struct Transport *)transport)
 
 /** ***************************************************************************
- * Operations
+ * VRB operations
+ */
+
+static size_t
+getDataLength(GVchanelptr chanel)
+{
+    size_t      dataLength;
+
+    vrb_p       vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireReadLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireReadLock");
+	}
+
+	dataLength = vrb_data_len(vrbHead);
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+	
+    }
+
+    return dataLength;
+}
+
+static size_t
+getDataPtr(GVchanelptr chanel)
+{
+    void        *dataPtr;
+
+    vrb_p        vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr  vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireReadLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireReadLock");
+	}
+
+	dataPtr = vrb_data_ptr(vrbHead);
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+
+    }
+
+    return (size_t) dataPtr;
+}
+
+static int
+take(GVchanelptr chanel,
+     size_t      amount)
+{
+    vrb_p       vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireWriteLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireWriteLock");
+	}
+
+	if (vrb_take(vrbHead, amount) == -1)
+	{
+	    THROW(e0, "vrb_take");
+	}
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+static size_t
+getSpaceLength(GVchanelptr chanel)
+{
+    size_t      spaceLength;
+
+    vrb_p       vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireReadLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireRwLock");
+	}
+
+	spaceLength = vrb_space_len(vrbHead);
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+
+    }
+
+    return spaceLength;
+}
+
+static size_t
+getSpacePtr(GVchanelptr chanel)
+{
+    void        *spacePtr;
+
+    vrb_p        vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr  vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireReadLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireReadLock");
+	}
+
+	spacePtr = vrb_space_ptr(vrbHead);
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+
+    }
+
+    return (size_t) spacePtr;
+}
+
+static int
+give(GVchanelptr chanel,
+     size_t      amount)
+{
+    vrb_p       vrbHead       = &castChanel(chanel)->shm->vrbHead;
+    GVrwlockptr vrbHeadAccess = &castChanel(chanel)->shm->vrbHeadAccess;
+
+    TRY
+    {
+	if (gvAcquireWriteLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireWriteLock");
+	}
+
+	if (vrb_give(vrbHead, amount) == -1)
+	{
+	    THROW(e0, "vrb_give");
+	}
+
+	if (gvReleaseRwLock(vrbHeadAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseRwLock");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+/** ***************************************************************************
+ * Stream operations
  */
 
 static int
@@ -81,44 +274,50 @@ readFunc(GVchanelptr  chanel,
 	 void        *toAddr,
 	 size_t       restLength)
 {
-    GVlockptr     condVarAccess = &castChanel(chanel)->shm->condVarAccess;
-    GVcondvarptr  notEmpty      = &castChanel(chanel)->shm->notEmpty;
-    GVcondvarptr  notFull       = &castChanel(chanel)->shm->notFull;
+    GVcondvarptr  notEmpty       = &castChanel(chanel)->shm->notEmpty;
+    GVlockptr     notEmptyAccess = &castChanel(chanel)->shm->notEmptyAccess;
 
-    vrb_p         vrbHead       = &castChanel(chanel)->shm->vrbHead;
-    void         *vrbTail       = castChanel(chanel)->app.vrbTail;
+    GVcondvarptr  notFull        = &castChanel(chanel)->shm->notFull;
+    GVlockptr     notFullAccess  = &castChanel(chanel)->shm->notFullAccess;
+
+    void         *vrbTail        = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        dataLength;
 
-    int           done          = 0;
+    int           done           = 0;
 
     TRY 
     {
         while (1) 
         {
-	    if (gvAcquire(condVarAccess) == -1)
+	    if (gvAcquireLock(notEmptyAccess) == -1)
 	    {
-		THROW(e0, "gvAcquire");
+		THROW(e0, "gvAcquireLock");
 	    }
 
-            while ((dataLength = vrb_data_len(vrbHead)) == 0)
+            while ((dataLength = getDataLength(chanel)) == 0)
             {
-                if (gvWait(notEmpty, condVarAccess) == -1)
+                if (gvWait(notEmpty, notEmptyAccess) == -1)
                 {
                     THROW(e0, "gvWait");
                 }
             }
 
-            offset = (size_t) vrb_data_ptr(vrbHead);
+	    if (gvReleaseLock(notEmptyAccess) == -1)
+	    {
+		THROW(e0, "gvReleaseLock");
+	    }
+
+            offset = getDataPtr(chanel);
 
             if (dataLength >= restLength)
             {
                 memcpy(toAddr, vrbTail + offset, restLength);
 
-                if (vrb_take(vrbHead, restLength) == -1)
+                if (take(chanel, restLength) == -1)
                 {
-                    THROW(e0, "vrb_take");
+                    THROW(e0, "take");
                 }
 
                 done = 1;
@@ -127,24 +326,29 @@ readFunc(GVchanelptr  chanel,
             {
                 memcpy(toAddr, vrbTail + offset, dataLength);
                 
-                if (vrb_take(vrbHead, dataLength) == -1)
+                if (take(chanel, dataLength) == -1)
                 {
-                    THROW(e0, "vrb_take");
+                    THROW(e0, "sync_vrb_take");
                 }
 
                 toAddr     = toAddr + dataLength;
                 restLength = restLength - dataLength;
             }
 
-	    if (gvRelease(condVarAccess) == -1)
+	    if (gvAcquireLock(notFullAccess) == -1)
 	    {
-		THROW(e0, "gvRelease");
+		THROW(e0, "gvAcquireLock");
 	    }
 
             if (gvNotify(notFull) == -1)
             {
                 THROW(e0, "gvNotify");
             }
+
+	    if (gvReleaseLock(notFullAccess) == -1)
+	    {
+		THROW(e0, "gvAcquireLock");
+	    }
 
             if (done)
             {
@@ -165,44 +369,50 @@ writeFunc(GVchanelptr  chanel,
 	  const void  *fromAddr,
 	  size_t       restLength)
 {
-    GVlockptr     condVarAccess = &castChanel(chanel)->shm->condVarAccess;
-    GVcondvarptr  notEmpty      = &castChanel(chanel)->shm->notEmpty;
-    GVcondvarptr  notFull       = &castChanel(chanel)->shm->notFull;
+    GVcondvarptr  notEmpty       = &castChanel(chanel)->shm->notEmpty;
+    GVlockptr     notEmptyAccess = &castChanel(chanel)->shm->notEmptyAccess;
 
-    vrb_p         vrbHead       = &castChanel(chanel)->shm->vrbHead;
-    void         *vrbTail       = castChanel(chanel)->app.vrbTail;
+    GVcondvarptr  notFull        = &castChanel(chanel)->shm->notFull;
+    GVlockptr     notFullAccess  = &castChanel(chanel)->shm->notFullAccess;
+
+    void         *vrbTail        = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        spaceLength;
 
-    int           done          = 0;
+    int           done           = 0;
 
     TRY
     {
         while (1) 
         {
-	    if (gvAcquire(condVarAccess) == -1)
+	    if (gvAcquireLock(notFullAccess) == -1)
 	    {
-		THROW(e0, "gvAcquire");
+		THROW(e0, "gvAcquireLock");
 	    }
 
-            while ((spaceLength = vrb_space_len(vrbHead)) == 0)
+            while ((spaceLength = getSpaceLength(chanel)) == 0)
             {
-                if (gvWait(notFull, condVarAccess) == -1)
+                if (gvWait(notFull, notFullAccess) == -1)
                 {
                     THROW(e0, "gvWait");
                 }
             }
 
-            offset = (size_t) vrb_space_ptr(vrbHead);
+	    if (gvReleaseLock(notFullAccess) == -1)
+	    {
+		THROW(e0, "gvReleaseLock");
+	    }
+
+            offset = getSpacePtr(chanel);
 
             if (spaceLength >= restLength)
             {
                 memcpy(vrbTail + offset, fromAddr, restLength);
         
-                if (vrb_give(vrbHead, restLength) == -1)
+                if (give(chanel, restLength) == -1)
                 {
-                    THROW(e0, "vrb_give");
+                    THROW(e0, "give");
                 }
 
                 done = 1;
@@ -211,24 +421,29 @@ writeFunc(GVchanelptr  chanel,
             {
                 memcpy(vrbTail + offset, fromAddr, spaceLength);
 
-                if (vrb_give(vrbHead, spaceLength) == -1)
+                if (give(chanel, spaceLength) == -1)
                 {
-                    THROW(e0, "vrb_give");
+                    THROW(e0, "give");
                 }
 
                 fromAddr   = fromAddr + spaceLength;
                 restLength = restLength - spaceLength;
             }
 
-	    if (gvRelease(condVarAccess) == -1)
+	    if (gvAcquireLock(notEmptyAccess) == -1)
 	    {
-		THROW(e0, "gvRelease");
+		THROW(e0, "gvAcquireLock");
 	    }
 
             if (gvNotify(notEmpty) == -1)
             {
                 THROW(e0, "gvNotify");
             }
+
+	    if (gvReleaseLock(notEmptyAccess) == -1)
+	    {
+		THROW(e0, "gvReleaseLock");
+	    }
 
             if (done)
             {
@@ -248,11 +463,10 @@ static void
 *peekFunc(GVchanelptr chanel,
 	  size_t      numBytes)
 {
-    GVlockptr     condVarAccess = &castChanel(chanel)->shm->condVarAccess;
-    GVcondvarptr  notEmpty      = &castChanel(chanel)->shm->notEmpty;
+    GVcondvarptr  notEmpty       = &castChanel(chanel)->shm->notEmpty;
+    GVlockptr     notEmptyAccess = &castChanel(chanel)->shm->notEmptyAccess;
 
-    vrb_p         vrbHead       = &castChanel(chanel)->shm->vrbHead;
-    void         *vrbTail       = castChanel(chanel)->app.vrbTail;
+    void         *vrbTail        = castChanel(chanel)->app.vrbTail;
 
     size_t        offset;
     size_t        dataLength;
@@ -261,25 +475,25 @@ static void
     {
         while (1) 
         {
-	    if (gvAcquire(condVarAccess) == -1)
+	    if (gvAcquireLock(notEmptyAccess) == -1)
 	    {
-		THROW(e0, "gvAcquire");
+		THROW(e0, "gvAcquireLock");
 	    }
      
-	    while ((dataLength = vrb_data_len(vrbHead)) < numBytes)
+	    while ((dataLength = getDataLength(chanel)) < numBytes)
             {
-                if (gvWait(notEmpty, condVarAccess) == -1)
+                if (gvWait(notEmpty, notEmptyAccess) == -1)
                 {
                     THROW(e0, "gvWait");
                 }
             }
 
-            offset = (size_t) vrb_data_ptr(vrbHead);
-
-	    if (gvRelease(condVarAccess) == -1)
+	    if (gvReleaseLock(notEmptyAccess) == -1)
 	    {
-		THROW(e0, "gvRelease");
+		THROW(e0, "gvReleaseLock");
 	    }
+
+            offset = getDataPtr(chanel);
 
             break;
         }
@@ -297,20 +511,29 @@ takeFunc(GVchanelptr chanel,
 	 size_t      length)
 {
 
-    GVcondvarptr notFull = &castChanel(chanel)->shm->notFull;
-
-    vrb_p        vrbHead = &castChanel(chanel)->shm->vrbHead;
+    GVcondvarptr notFull       = &castChanel(chanel)->shm->notFull;
+    GVlockptr    notFullAccess = &castChanel(chanel)->shm->notFullAccess;
 
     TRY
     {
-        if (vrb_take(vrbHead, length) == -1)
+        if (take(chanel, length) == -1)
         {
-            THROW(e0, "vrb_take");
+            THROW(e0, "take");
         }
+
+	if (gvAcquireLock(notFullAccess) == -1)
+	{
+	    THROW(e0, "gvAcquireLock");
+	}
 
 	if (gvNotify(notFull) == -1)
 	{
 	    THROW(e0, "gvNotify");
+	}
+
+	if (gvReleaseLock(notFullAccess) == -1)
+	{
+	    THROW(e0, "gvReleaseLock");
 	}
     }
     CATCH (e0)
@@ -469,14 +692,14 @@ initSyncPrimitives(struct Chanel *callChanel,
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateLock(&callChanel->shm->condVarAccess) == NULL)
-        {
-            THROW(e0, "gvCreateLock");
-        }
-
         if (gvCreateCondVar(&callChanel->shm->notEmpty) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
+        }
+
+        if (gvCreateLock(&callChanel->shm->notEmptyAccess) == NULL)
+        {
+            THROW(e0, "gvCreateLock");
         }
 
         if (gvCreateCondVar(&callChanel->shm->notFull) == NULL)
@@ -484,12 +707,17 @@ initSyncPrimitives(struct Chanel *callChanel,
             THROW(e0, "gvCreateCondVar");
         }
 
-        if (gvCreateLock(&returnChanel->shm->exclusiveAccess) == NULL)
+        if (gvCreateLock(&callChanel->shm->notFullAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
 
-        if (gvCreateLock(&returnChanel->shm->condVarAccess) == NULL)
+        if (gvCreateRwLock(&callChanel->shm->vrbHeadAccess) == NULL)
+        {
+            THROW(e0, "gvCreateRwLock");
+        }
+
+        if (gvCreateLock(&returnChanel->shm->exclusiveAccess) == NULL)
         {
             THROW(e0, "gvCreateLock");
         }
@@ -499,9 +727,24 @@ initSyncPrimitives(struct Chanel *callChanel,
             THROW(e0, "gvCreateCondVar");
         }
 
+        if (gvCreateLock(&returnChanel->shm->notEmptyAccess) == NULL)
+        {
+            THROW(e0, "gvCreateLock");
+        }
+
         if (gvCreateCondVar(&returnChanel->shm->notFull) == NULL)
         {
             THROW(e0, "gvCreateCondVar");
+        }
+
+        if (gvCreateLock(&returnChanel->shm->notFullAccess) == NULL)
+        {
+            THROW(e0, "gvCreateLock");
+        }
+
+        if (gvCreateRwLock(&returnChanel->shm->vrbHeadAccess) == NULL)
+        {
+            THROW(e0, "gvCreateRwLock");
         }
     }
     CATCH (e0)

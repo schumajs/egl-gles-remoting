@@ -1,5 +1,5 @@
 /*! ***************************************************************************
- * \file    lock.h
+ * \file    rwlock.h
  * \brief   
  * 
  * \date    December 20, 2011
@@ -9,13 +9,13 @@
  * \details
  */
 
-#ifndef LOCK_H_
-#define LOCK_H_
+#ifndef RWLOCK_H_
+#define RWLOCK_H_
 
 #include <pthread.h>
 
-typedef pthread_mutex_t GVlock; 
-typedef GVlock *GVlockptr;
+typedef pthread_rwlock_t GVrwlock; 
+typedef GVrwlock *GVrwlockptr;
 
 /*! ***************************************************************************
  * \brief 
@@ -23,8 +23,8 @@ typedef GVlock *GVlockptr;
  * \param  [in] desiredAddr
  * \return
  */
-GVlockptr
-gvCreateLock(void *desiredAddr);
+GVrwlockptr
+gvCreateRwLock(void *desiredAddr);
 
 /*! ***************************************************************************
  * \brief 
@@ -33,7 +33,16 @@ gvCreateLock(void *desiredAddr);
  * \return
  */
 int
-gvAcquireLock(GVlockptr lock);
+gvAcquireReadLock(GVrwlockptr lock);
+
+/*! ***************************************************************************
+ * \brief 
+ *
+ * \param  [in] lock
+ * \return
+ */
+int
+gvAcquireWriteLock(GVrwlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -42,7 +51,7 @@ gvAcquireLock(GVlockptr lock);
  * \return
  */
 int
-gvReleaseLock(GVlockptr lock);
+gvReleaseRwLock(GVrwlockptr lock);
 
 /*! ***************************************************************************
  * \brief 
@@ -51,6 +60,6 @@ gvReleaseLock(GVlockptr lock);
  * \return
  */
 int
-gvDestroyLock(GVlockptr lock);
+gvDestroyRwLock(GVrwlockptr lock);
 
-#endif /* LOCK_H */
+#endif /* RWLOCK_H */

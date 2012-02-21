@@ -34,9 +34,9 @@ gvStartSending(GVtransportptr  transport,
     {
 	if (lock != NULL)
 	{
-	    if (gvAcquire(lock) == -1)
+	    if (gvAcquireLock(lock) == -1)
 	    {
-		THROW(e0, "gvAcquire");
+		THROW(e0, "gvAcquireLock");
 	    }
 	}
 
@@ -71,7 +71,7 @@ gvStartSending(GVtransportptr  transport,
 	    /* Try to unlock. At this point we can't do anything if unlocking
 	     * fails, so just ignore errors.
 	     */
-	    gvRelease(lock);
+	    gvReleaseLock(lock);
 	}
 
 	return -1;
@@ -88,9 +88,9 @@ gvStopSending(GVtransportptr transport,
     {
 	if (lock != NULL)
 	{
-	    if (gvRelease(lock) == -1)
+	    if (gvReleaseLock(lock) == -1)
 	    {
-		THROW(e0, "gvRelease");
+		THROW(e0, "gvReleaseLock");
 	    }
 	}
     }
@@ -113,9 +113,9 @@ gvStartReceiving(GVtransportptr transport,
 	{
 	    if (lock != NULL)
 	    {
-		if (gvAcquire(lock) == -1)
+		if (gvAcquireLock(lock) == -1)
 		{
-		    THROW(e0, "gvAcquire");
+		    THROW(e0, "gvAcquireLock");
 		}
 	    }
 
@@ -132,9 +132,9 @@ gvStartReceiving(GVtransportptr transport,
 
 	    if (lock != NULL)
 	    {
-		if (gvRelease(lock) == -1)
+		if (gvReleaseLock(lock) == -1)
 		{
-		    THROW(e1, "gvRelease");
+		    THROW(e1, "gvReleaseLock");
 		}
 	    }
         }
@@ -150,7 +150,7 @@ gvStartReceiving(GVtransportptr transport,
 	    /* Try to unlock. At this point we can't do anything if unlocking
 	     * fails, so just ignore errors.
 	     */
-	    gvRelease(lock);
+	    gvReleaseLock(lock);
 	}
 
 	return -1;
@@ -167,9 +167,9 @@ gvStopReceiving(GVtransportptr transport,
     {
 	if (lock != NULL)
 	{
-	    if (gvRelease(lock) == -1)
+	    if (gvReleaseLock(lock) == -1)
 	    {
-		THROW(e0, "gvRelease");
+		THROW(e0, "gvReleaseLock");
 	    }
 	}
     }

@@ -25,7 +25,7 @@ VER_REV  := 1
 SH_TAR := sharedlib
 SH_BIN := gvshared
 
-SH_C0_OBJS  := cond_var.0.o lock.0.o process_state_map.0.o serializer.0.o shared_memory.0.o sleep.0.o thread_state_map.0.o shm_stream_transport.0.o
+SH_C0_OBJS  := cond_var.0.o lock.0.o process_state_map.0.o rwlock.0.o serializer.0.o shared_memory.0.o sleep.0.o thread_state_map.0.o shm_stream_transport.0.o
 SH_C1_OBJS  :=
 
 ###############################################################################

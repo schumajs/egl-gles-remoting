@@ -58,7 +58,7 @@ gvCreateLock(void *desiredAddr)
 }
 
 int
-gvAcquire(GVlockptr lock)
+gvAcquireLock(GVlockptr lock)
 {
     TRY
     {
@@ -76,25 +76,7 @@ gvAcquire(GVlockptr lock)
 }
 
 int
-gvTryToAcquire(GVlockptr lock)
-{
-    TRY
-    {
-	if (pthread_mutex_trylock(lock) != 0)
-	{
-	    THROW(e0, "pthread_mutex_trylock");
-	}
-    }
-    CATCH(e0)
-    {
-	return -1;
-    }
-
-    return 0;
-}
-
-int
-gvRelease(GVlockptr lock)
+gvReleaseLock(GVlockptr lock)
 {
     TRY
     {
