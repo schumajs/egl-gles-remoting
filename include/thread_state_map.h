@@ -12,7 +12,7 @@
 #ifndef THREAD_STATE_MAP_H_
 #define THREAD_STATE_MAP_H_
 
-typedef void (*GVforeachfunc)(unsigned long int, void*, void*);
+typedef void (*GVtstateiterfunc)(unsigned long int, void*, void*);
 
 /*! ***************************************************************************
  * \brief
@@ -48,8 +48,8 @@ void
  * \return
  */
 int
-gvForeachThreadStateItem(GVforeachfunc  func,
-			 void          *arg);
+gvForeachThreadStateItem(GVtstateiterfunc  func,
+			 void             *arg);
 
 /*! ***************************************************************************
  * \brief

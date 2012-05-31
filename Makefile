@@ -109,7 +109,7 @@ $(SH_TAR): $(SH_OBJS)
 #
 
 $(CL_TAR): $(SH_TAR) $(CL_OBJS)
-	$(CC) -shared -Wl,-rpath,.,-soname,$(CL_BIN_MAJ) -o $(CL_BIN_REV) $(CL_OBJS) $(SH_BIN_LIB)
+	$(CC) -shared -Wl,-R,.,-soname,$(CL_BIN_MAJ) -o $(CL_BIN_REV) $(CL_OBJS) $(SH_BIN_LIB)
 	ln -sf $(CL_BIN_REV) $(CL_BIN_MAJ)
 	ln -sf $(CL_BIN_REV) $(CL_BIN_LIB)
 
@@ -118,7 +118,7 @@ $(CL_TAR): $(SH_TAR) $(CL_OBJS)
 #
 
 $(SL_TAR): $(SH_TAR) $(SL_OBJS)
-	$(CC) -shared -Wl,-rpath,.,-soname,$(SL_BIN_MAJ) -o $(SL_BIN_REV) $(SL_OBJS) $(SH_BIN_LIB) -ldlmalloc -lEGL -lGLESv2
+	$(CC) -shared -Wl,-R,.,-soname,$(SL_BIN_MAJ) -o $(SL_BIN_REV) $(SL_OBJS) $(SH_BIN_LIB) -ldlmalloc -lEGL -lGLESv2
 	ln -sf $(SL_BIN_REV) $(SL_BIN_MAJ)
 	ln -sf $(SL_BIN_REV) $(SL_BIN_LIB)
 

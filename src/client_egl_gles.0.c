@@ -26,8 +26,10 @@
 #include "shared_memory.h"
 #include "shm_stream_transport.h"
 
-#define TRANSPORT_LENGTH 208896 // (51 * 4096)
-// #define TRANSPORT_LENGTH 12288 // (3 * 4096)
+typedef char GLchar;
+
+#define TRANSPORT_LENGTH 266240
+//#define TRANSPORT_LENGTH 12288 // (3 * 4096)
 
 #define DEFAULT_DISPLAY  (void *)1
 #define DEFAULT_CONTEXT  (void *)1
@@ -46,43 +48,43 @@ createContext(EGLDisplay display, EGLContext context)
 
     TRY
     {
-	if ((contextState = malloc(sizeof(struct GVcontextstate))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
+        if ((contextState = malloc(sizeof(struct GVcontextstate))) == NULL)
+        {
+            THROW(e0, "malloc");
+        }
 
-	if ((transportOffset = gvAlloc(TRANSPORT_LENGTH)) == 0)
-	{
-	    THROW(e0, "gvAlloc");
-	}
+        if ((transportOffset = gvAlloc(TRANSPORT_LENGTH)) == 0)
+        {
+            THROW(e0, "gvAlloc");
+        }
 
-	if (gvBonjour(transportOffset, TRANSPORT_LENGTH) == -1)
-	{
-	    THROW(e0, "gvBonjour");
-	}
+        if (gvBonjour(transportOffset, TRANSPORT_LENGTH) == -1)
+        {
+            THROW(e0, "gvBonjour");
+        }
 
-	if ((transport
-	     = gvCreateShmStreamTransport(vmShm,
-					  transportOffset,
-					  TRANSPORT_LENGTH)) == NULL)
-	{
-	    THROW(e0, "gvCreateTransport");
-	}
+        if ((transport
+             = gvCreateShmStreamTransport(vmShm,
+                                          transportOffset,
+                                          TRANSPORT_LENGTH)) == NULL)
+        {
+            THROW(e0, "gvCreateTransport");
+        }
 
-	contextState->display         = display;
-	contextState->context         = context;
-	contextState->markedCurrent   = 0;
-	contextState->markedDestroyed = 0;
-	contextState->transport       = transport;
+        contextState->display         = display;
+        contextState->context         = context;
+        contextState->markedCurrent   = 0;
+        contextState->markedDestroyed = 0;
+        contextState->transport       = transport;
 
-	if (gvPutEglContextState(display, context, contextState) == -1)
-	{
-	    THROW(e0, "gvPutEglContextState");
-	}
+        if (gvPutEglContextState(display, context, contextState) == -1)
+        {
+            THROW(e0, "gvPutEglContextState");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
 
     return 0;
@@ -97,50 +99,50 @@ makeCurrent(EGLDisplay newDisplay, EGLContext newContext)
 
     TRY
     {
-	if ((oldDisplay = gvGetCurrentThreadDisplay()) == NULL)
-	{
-	    THROW(e0, "gvGetCurrentThreadDisplay");
-	}
+        if ((oldDisplay = gvGetCurrentThreadDisplay()) == NULL)
+        {
+            THROW(e0, "gvGetCurrentThreadDisplay");
+        }
 
-	if ((oldContext = gvGetCurrentThreadContext()) == NULL)
-	{
-	    THROW(e0, "gvGetCurrentThreadContext");
-	}
+        if ((oldContext = gvGetCurrentThreadContext()) == NULL)
+        {
+            THROW(e0, "gvGetCurrentThreadContext");
+        }
 
-	if (gvSetMarkedCurrent(oldDisplay, oldContext, 0) == -1)
-	{
-	    THROW(e0, "gvSetMarkedCurrent");
-	}
+        if (gvSetMarkedCurrent(oldDisplay, oldContext, 0) == -1)
+        {
+            THROW(e0, "gvSetMarkedCurrent");
+        }
 
-	if ((newContextState
-	     = gvGetEglContextState(newDisplay, newContext)) == NULL)
-	{
-	    THROW(e0, "gvGetEglContextState");
-	}
+        if ((newContextState
+             = gvGetEglContextState(newDisplay, newContext)) == NULL)
+        {
+            THROW(e0, "gvGetEglContextState");
+        }
 
-	if (gvSetCurrentThreadDisplay(newContextState->display) == -1)
-	{
-	    THROW(e0, "gvSetThreadDisplay");
-	}
+        if (gvSetCurrentThreadDisplay(newContextState->display) == -1)
+        {
+            THROW(e0, "gvSetThreadDisplay");
+        }
 
-	if (gvSetCurrentThreadContext(newContextState->context) == -1)
-	{
-	    THROW(e0, "gvSetThreadContext");
-	}
+        if (gvSetCurrentThreadContext(newContextState->context) == -1)
+        {
+            THROW(e0, "gvSetThreadContext");
+        }
 
-	if (gvSetCurrentThreadTransport(newContextState->transport) == -1)
-	{
-	    THROW(e0, "gvSetThreadTransport");
-	}
+        if (gvSetCurrentThreadTransport(newContextState->transport) == -1)
+        {
+            THROW(e0, "gvSetThreadTransport");
+        }
 
-	if (gvSetMarkedCurrent(newDisplay, newContext, 1) == -1)
-	{
-	    THROW(e0, "gvSetMarkedCurrent");
-	}
+        if (gvSetMarkedCurrent(newDisplay, newContext, 1) == -1)
+        {
+            THROW(e0, "gvSetMarkedCurrent");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
 
     return 0;
@@ -154,87 +156,252 @@ initEglGlesClient()
 
     TRY
     {
-	if ((vmShm = malloc(sizeof(struct GVshm))) == NULL)
-	{
-	    THROW(e0, "malloc");
-	}
+        if ((vmShm = malloc(sizeof(struct GVshm))) == NULL)
+        {
+            THROW(e0, "malloc");
+        }
 
-	vmShm->id   = vmShmFd;
-	vmShm->size = vmShmSize;
+        vmShm->id   = vmShmFd;
+        vmShm->size = vmShmSize;
 
-	if (vmShmSize < TRANSPORT_LENGTH)
-	{
-	    errno = EINVAL;
-	    THROW(e0, "not enough space");
-	}
+        if (vmShmSize < TRANSPORT_LENGTH)
+        {
+            errno = EINVAL;
+            THROW(e0, "not enough space");
+        }
 
-	if (createContext(DEFAULT_DISPLAY, DEFAULT_CONTEXT) == -1)
-	{
-	    THROW(e0, "createContext");
-	}
+        if (createContext(DEFAULT_DISPLAY, DEFAULT_CONTEXT) == -1)
+        {
+            THROW(e0, "createContext");
+        }
 
-	if (gvSetCurrentThreadDisplay(DEFAULT_DISPLAY) == -1)
-	{
-	    THROW(e0, "gvSetCurrentThreadDisplay");
-	}
+        if (gvSetCurrentThreadDisplay(DEFAULT_DISPLAY) == -1)
+        {
+            THROW(e0, "gvSetCurrentThreadDisplay");
+        }
 
-	if (gvSetCurrentThreadContext(DEFAULT_CONTEXT) == -1)
-	{
-	    THROW(e0, "gvSetCurrentThreadContext");
-	}
+        if (gvSetCurrentThreadContext(DEFAULT_CONTEXT) == -1)
+        {
+            THROW(e0, "gvSetCurrentThreadContext");
+        }
 
-	if (gvSetMarkedCurrent(DEFAULT_CONTEXT, DEFAULT_DISPLAY, 1) == -1)
-	{
-	    THROW(e0, "gvSetMarkedCurrent");
-	}
+        if (gvSetMarkedCurrent(DEFAULT_CONTEXT, DEFAULT_DISPLAY, 1) == -1)
+        {
+            THROW(e0, "gvSetMarkedCurrent");
+        }
     }
     CATCH (e0)
     {
-	return -1;
+        return -1;
     }
 
     return 0;
 }
 
+static size_t
+getSizeByType(GLenum type)
+{
+    size_t size;
+
+    switch (type)
+    {
+    case GL_BYTE:
+        size = sizeof(GLbyte);
+        break;
+    case GL_UNSIGNED_BYTE:
+        size = sizeof(GLubyte);
+        break;
+    case GL_SHORT:
+        size = sizeof(GLshort);
+        break;
+    case GL_UNSIGNED_SHORT:
+        size = sizeof(GLushort);
+        break;
+    case GL_FIXED:
+        size = sizeof(GLfixed);
+        break;
+    case GL_FLOAT:
+        size = sizeof(GLfloat);
+        break;
+    }
+
+    return size;
+}
+
+static int
+getNumComponentsByFormat(GLint internalFormat)
+{
+    size_t numComponents;
+
+    switch (internalFormat)
+    {
+    case GL_RGB:
+        numComponents = 3;
+        break;
+    case GL_RGBA:
+        numComponents = 4;
+        break;
+    }
+
+    return numComponents;
+}
+
+static int
+sendVertexAttribArrays(GLint   first,
+                       GLsizei count)
+{
+    GVtransportptr transport = gvGetCurrentThreadTransport();
+
+    TRY
+    {
+        GVvertexattribptr attribs;
+        int               numAttribs;
+
+        if (gvGetEnabledVertexAttribs(&attribs, &numAttribs) == -1)
+        {
+            THROW(e0, "gvGetEnabledVertexAttribs");
+        }
+
+        /* Send number of vertex attributes */
+        gvSendData(transport, &numAttribs, sizeof(int));
+
+        /* Send number of vertices */
+        gvSendData(transport, &count, sizeof(GLsizei));
+
+        /* Send vertex buffer indicator */
+	int anyBufferBound = gvIsAnyBufferBound();
+	gvSendData(transport, &anyBufferBound, sizeof(int));
+
+        int     i;
+	GLsizei blockSize;
+	GLsizei blockStep;
+	GLsizei stride;
+	size_t  vertexSize;
+        for (i = 0; i < numAttribs; i++)
+        {
+            /* Send vertex attribute */
+            gvSendData(transport, &attribs[i].index, sizeof(GLuint));
+            gvSendData(transport, &attribs[i].size, sizeof(GLint));
+            gvSendData(transport, &attribs[i].type, sizeof(GLenum));
+            gvSendData(transport, &attribs[i].normalized, sizeof(GLboolean));
+            gvSendData(transport, &attribs[i].stride, sizeof(GLsizei));
+            gvSendData(transport, &attribs[i].ptr, sizeof(GLvoid*));
+
+	    if (anyBufferBound)
+	    {
+		continue;
+	    }
+
+	    vertexSize = attribs[i].size * getSizeByType(attribs[i].type);
+
+	    if (attribs[i].stride == 0)
+	    {
+		stride    = vertexSize;
+
+		blockSize = count * vertexSize;
+		blockStep = count * vertexSize;
+	    }
+	    else
+	    {
+		stride    = attribs[i].stride;
+
+		blockSize = vertexSize;
+		blockStep = attribs[i].stride;
+	    }
+
+	    /* Send vertex attribute array elements */
+	    void *j;
+	    for (j = (void *)attribs[i].ptr + first * stride;
+		 j < (void *)attribs[i].ptr + (first + count) * stride;
+		 j = j + blockStep)
+	    {
+		gvSendData(transport, j, blockSize);
+	    }
+        }
+    }
+    CATCH (e0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+getMaxIndexub(const GLubyte *indices,
+              GLsizei        numIndices)
+{
+    GLubyte max = 0;
+
+    int i;
+    for (i = 0; i < numIndices; i++)
+    {
+        if (indices[i] > max) 
+        {
+            max = indices[i];
+        }
+    }
+
+    return (int) max;
+}
+
+static int
+getMaxIndexus(const GLushort *indices,
+              GLsizei         numIndices)
+{
+    GLushort max = 0;
+
+    int i;
+    for (i = 0; i < numIndices; i++)
+    {
+        if (indices[i] > max) 
+        {
+            max = indices[i];
+        }
+    }
+
+    return (int) max;
+}
+
 /* TODO are there any issues with double checked locking? */
-#define initProcessIfNotDoneAlready()				\
-    do {							\
-        if (!processInitiated)					\
-        {							\
-            pthread_mutex_lock(&initProcessLock);		\
-            if (!processInitiated)				\
-            {							\
-	        if (initEglGlesClient() == -1)			\
-	        {						\
-	            pthread_mutex_unlock(&initProcessLock);	\
-	            /* TODO ? */				\
-		    exit(2);					\
-	        }						\
-		processInitiated = 1;				\
-            }							\
-            pthread_mutex_unlock(&initProcessLock);		\
-        }							\
+#define initProcessIfNotDoneAlready()                           \
+    do {                                                        \
+    if (!processInitiated)                                  \
+    {                                                       \
+    pthread_mutex_lock(&initProcessLock);               \
+    if (!processInitiated)                              \
+    {                                                   \
+    if (initEglGlesClient() == -1)                  \
+    {                                               \
+    pthread_mutex_unlock(&initProcessLock);     \
+    /* TODO ? */                                \
+    exit(2);                                    \
+    }                                               \
+	processInitiated = 1;                           \
+	}                                                   \
+    pthread_mutex_unlock(&initProcessLock);             \
+    }                                                       \
     } while (0)
 
-#define initThreadIfNotDoneAlready()					\
-    do {								\
-	if (gvGetCurrentThreadTransport() == NULL)			\
-	{								\
-	    GVcontextstateptr state;					\
-	    								\
-	    if ((state							\
-		 = gvGetEglContextState(DEFAULT_DISPLAY,		\
-					DEFAULT_CONTEXT)) == NULL)	\
-	    {								\
-		/* TODO ? */						\
-                exit(2);						\
-	    }								\
-									\
-	    if (gvSetCurrentThreadTransport(state->transport) == -1)	\
-	    {								\
-		exit(2);						\
-	    }								\
-	}								\
+#define initThreadIfNotDoneAlready()                                    \
+    do {                                                                \
+    if (gvGetCurrentThreadTransport() == NULL)                      \
+    {                                                               \
+    GVcontextstateptr state;                                    \
+                                                                        \
+    if ((state                                                  \
+	= gvGetEglContextState(DEFAULT_DISPLAY,                \
+			       DEFAULT_CONTEXT)) == NULL)      \
+    {                                                           \
+    /* TODO ? */                                            \
+    exit(2);                                                \
+    }                                                           \
+                                                                        \
+    if (gvSetCurrentThreadTransport(state->transport) == -1)    \
+    {                                                           \
+    exit(2);                                                \
+    }                                                           \
+    }                                                               \
     } while (0)
 
 /* ***************************************************************************
@@ -252,12 +419,12 @@ getAttribListSize(const EGLint *attribList)
 
     if (attribList != NULL)
     {
-	while (attribList[attribListSize] != EGL_NONE)
-	{
-	    attribListSize++;
-	}
+        while (attribList[attribListSize] != EGL_NONE)
+        {
+            attribListSize++;
+        }
 
-	attribListSize++;
+        attribListSize++;
     }
     
     return attribListSize;
@@ -308,8 +475,8 @@ eglGetDisplay(EGLNativeDisplayType displayId)
 
 EGLBoolean
 eglInitialize(EGLDisplay  display,
-	      EGLint     *major,
-	      EGLint     *minor)
+              EGLint     *major,
+              EGLint     *minor)
 {
     GVtransportptr transport;
 
@@ -332,13 +499,13 @@ eglInitialize(EGLDisplay  display,
     gvReceiveData(transport, &majorTemp, sizeof(EGLint));
     if (major != NULL)
     {
-	*major = majorTemp;
+        *major = majorTemp;
     }
     int minorTemp;
     gvReceiveData(transport, &minorTemp, sizeof(EGLint));
     if (minor != NULL)
     {
-	*minor = minorTemp;
+        *minor = minorTemp;
     }
 
     return status;
@@ -370,7 +537,7 @@ eglTerminate(EGLDisplay display)
 
 const char
 *eglQueryString(EGLDisplay display,
-		EGLint     name)
+                EGLint     name)
 {
     GVtransportptr  transport;
 
@@ -394,9 +561,9 @@ const char
 
 EGLBoolean
 eglGetConfigs(EGLDisplay display,
-	      EGLConfig *configs,
-	      EGLint     configSize,
-	      EGLint    *numConfig)
+              EGLConfig *configs,
+              EGLint     configSize,
+              EGLint    *numConfig)
 {
     GVtransportptr  transport;
 
@@ -411,7 +578,7 @@ eglGetConfigs(EGLDisplay display,
     /* A - Optional OUT pointer */
     if (configs == NULL)
     {
-	configSize = 0;
+        configSize = 0;
     }
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_GETCONFIGS);
@@ -433,10 +600,10 @@ eglGetConfigs(EGLDisplay display,
 
 EGLBoolean
 eglChooseConfig(EGLDisplay    display,
-		const EGLint *attribList,
-		EGLConfig    *configs,
-		EGLint        configSize,
-		EGLint       *numConfig)
+                const EGLint *attribList,
+                EGLConfig    *configs,
+                EGLint        configSize,
+                EGLint       *numConfig)
 {
     GVtransportptr  transport;
 
@@ -451,14 +618,14 @@ eglChooseConfig(EGLDisplay    display,
     /* A - Optional OUT pointer */
     if (configs == NULL)
     {
-	configSize = 0;
+        configSize = 0;
     }
 
     callId = gvStartSending(transport, NULL, GV_CMDID_EGL_CHOOSECONFIG);
     gvSendData(transport, &display, sizeof(EGLDisplay));
     gvSendVarSizeData(transport,
-		      attribList,
-		      getAttribListSize(attribList) * sizeof(EGLint));
+                      attribList,
+                      getAttribListSize(attribList) * sizeof(EGLint));
     gvSendData(transport, &configSize, sizeof(EGLint));
 
     gvStartReceiving(transport, NULL, callId);
@@ -476,9 +643,9 @@ eglChooseConfig(EGLDisplay    display,
 
 EGLBoolean
 eglGetConfigAttrib(EGLDisplay  display,
-		   EGLConfig   config,
-		   EGLint      attribute,
-		   EGLint     *value)
+                   EGLConfig   config,
+                   EGLint      attribute,
+                   EGLint     *value)
 {
     GVtransportptr  transport;
 
@@ -504,9 +671,9 @@ eglGetConfigAttrib(EGLDisplay  display,
 
 EGLSurface
 eglCreateWindowSurface(EGLDisplay           display,
-		       EGLConfig            config,
-		       EGLNativeWindowType  window,
-		       const EGLint        *attribList)
+                       EGLConfig            config,
+                       EGLNativeWindowType  window,
+                       const EGLint        *attribList)
 {
     GVtransportptr  transport;
 
@@ -523,8 +690,8 @@ eglCreateWindowSurface(EGLDisplay           display,
     gvSendData(transport, &config, sizeof(EGLConfig));
     gvSendData(transport, &window, sizeof(EGLNativeWindowType));
     gvSendVarSizeData(transport,
-		      attribList,
-		      getAttribListSize(attribList) * sizeof(EGLint));
+                      attribList,
+                      getAttribListSize(attribList) * sizeof(EGLint));
 
     gvStartReceiving(transport, NULL, callId);
     gvReceiveData(transport, &surface, sizeof(EGLSurface));
@@ -534,33 +701,33 @@ eglCreateWindowSurface(EGLDisplay           display,
 
 EGLSurface
 eglCreatePbufferSurface(EGLDisplay    display,
-			EGLConfig     config,
-			const EGLint *attribList)
+                        EGLConfig     config,
+                        const EGLint *attribList)
 {
     return NULL;
 }
 
 EGLSurface
 eglCreatePixmapSurface(EGLDisplay           display,
-		       EGLConfig            config,
+                       EGLConfig            config,
                        EGLNativePixmapType  pixmap,
-		       const EGLint        *attribList)
+                       const EGLint        *attribList)
 {
     return NULL;
 }
 
 EGLBoolean
 eglDestroySurface(EGLDisplay display,
-		  EGLSurface surface)
+                  EGLSurface surface)
 {
     return 1;
 }
 
 EGLBoolean 
 eglQuerySurface(EGLDisplay  display,
-		EGLSurface  surface,
-		EGLint      attribute,
-		EGLint     *value)
+                EGLSurface  surface,
+                EGLint      attribute,
+                EGLint     *value)
 {
     return 1;
 }
@@ -607,51 +774,51 @@ eglReleaseThread(void)
 
 EGLSurface
 eglCreatePbufferFromClientBuffer(EGLDisplay       display,
-				 EGLenum          bufferType,
-				 EGLClientBuffer  buffer,
-				 EGLConfig        config,
-				 const EGLint    *attribList)
+                                 EGLenum          bufferType,
+                                 EGLClientBuffer  buffer,
+                                 EGLConfig        config,
+                                 const EGLint    *attribList)
 {
     return NULL;
 }
 
 EGLBoolean
 eglSurfaceAttrib(EGLDisplay display,
-		 EGLSurface surface,
-		 EGLint     attribute,
-		 EGLint     value)
+                 EGLSurface surface,
+                 EGLint     attribute,
+                 EGLint     value)
 {
     return 1;
 }
 
 EGLBoolean
 eglBindTexImage(EGLDisplay display,
-		EGLSurface surface,
-		EGLint     buffer)
+                EGLSurface surface,
+                EGLint     buffer)
 {
     return 1;
 }
 
 EGLBoolean
 eglReleaseTexImage(EGLDisplay display,
-		   EGLSurface surface,
-		   EGLint     buffer)
+                   EGLSurface surface,
+                   EGLint     buffer)
 {
     return 1;
 }
 
 EGLBoolean
 eglSwapInterval(EGLDisplay display,
-		EGLint     interval)
+                EGLint     interval)
 {
     return 1;
 }
 
 EGLContext
 eglCreateContext(EGLDisplay    display,
-		 EGLConfig     config,
-		 EGLContext    shareContext,
-		 const EGLint *attribList)
+                 EGLConfig     config,
+                 EGLContext    shareContext,
+                 const EGLint *attribList)
 {
     GVtransportptr  transport;
 
@@ -668,25 +835,25 @@ eglCreateContext(EGLDisplay    display,
     gvSendData(transport, &config, sizeof(EGLConfig));
     gvSendData(transport, &shareContext, sizeof(EGLContext));
     gvSendVarSizeData(transport,
-		      attribList,
-		      getAttribListSize(attribList) * sizeof(EGLint));
+                      attribList,
+                      getAttribListSize(attribList) * sizeof(EGLint));
 
     gvStartReceiving(transport, NULL, callId);
     gvReceiveData(transport, &context, sizeof(EGLContext));
 
     if (context != NULL)
     {
-	TRY
-	{
-	    if (createContext(display, context) == -1)
-	    {
-		THROW(e0, "createContext");
-	    }
-	}
-	CATCH (e0)
-	{
-	    return NULL;
-	}
+        TRY
+        {
+            if (createContext(display, context) == -1)
+            {
+                THROW(e0, "createContext");
+            }
+        }
+        CATCH (e0)
+        {
+            return NULL;
+        }
     }
 
     return context;
@@ -694,16 +861,16 @@ eglCreateContext(EGLDisplay    display,
 
 EGLBoolean
 eglDestroyContext(EGLDisplay display,
-		  EGLContext context)
+                  EGLContext context)
 {
     return 1;
 }
 
 EGLBoolean
 eglMakeCurrent(EGLDisplay display,
-	       EGLSurface drawSurface,
-	       EGLSurface readSurface,
-	       EGLContext context)
+               EGLSurface drawSurface,
+               EGLSurface readSurface,
+               EGLContext context)
 {
     GVtransportptr  transport;
 
@@ -715,15 +882,15 @@ eglMakeCurrent(EGLDisplay display,
 
     TRY
     {
-	if (makeCurrent(display, context) == -1)
-	{
-	    THROW(e0, "makeCurrent");
-	}
+        if (makeCurrent(display, context) == -1)
+        {
+            THROW(e0, "makeCurrent");
+        }
     }
     CATCH (e0)
     {
-	/* TODO reset transport */
-	return EGL_FALSE;
+        /* TODO reset transport */
+        return EGL_FALSE;
     }
 
     transport = gvGetCurrentThreadTransport();
@@ -739,7 +906,7 @@ eglMakeCurrent(EGLDisplay display,
 
     if (status == EGL_FALSE)
     {
-	/* TODO reset transport */
+        /* TODO reset transport */
     }
 
     return EGL_TRUE;
@@ -765,9 +932,9 @@ eglGetCurrentDisplay()
 
 EGLBoolean
 eglQueryContext(EGLDisplay  display,
-		EGLContext  context,
-		EGLint      attribute,
-		EGLint     *value)
+                EGLContext  context,
+                EGLint      attribute,
+                EGLint     *value)
 {
     return 1;
 }
@@ -786,7 +953,7 @@ eglWaitNative(EGLint engine)
 
 EGLBoolean
 eglSwapBuffers(EGLDisplay display,
-	       EGLSurface surface)
+               EGLSurface surface)
 {
     GVtransportptr  transport;
 
@@ -810,8 +977,8 @@ eglSwapBuffers(EGLDisplay display,
 
 EGLBoolean
 eglCopyBuffers(EGLDisplay          display,
-	       EGLSurface          surface,
-	       EGLNativePixmapType target)
+               EGLSurface          surface,
+               EGLNativePixmapType target)
 {
     return 1;
 }
@@ -844,9 +1011,9 @@ glCreateShader(GLenum type)
 
 void
 glShaderSource(GLuint         shader,
-	       GLsizei        count,
-	       const GLchar **string,
-	       const GLint*   length)
+               GLsizei        count,
+               const GLchar **string,
+               const GLint*   length)
 {
     GVtransportptr  transport;
 
@@ -862,40 +1029,40 @@ glShaderSource(GLuint         shader,
     /* There are several ways to pass "string", see spec. p. 27 */
     if (length == NULL)
     {
-	int passingType = 0;
-	gvSendData(transport, &passingType, sizeof(int));
+        int passingType = 0;
+        gvSendData(transport, &passingType, sizeof(int));
 
-	int i;
-	for (i = 0; i < count; i++)
-	{
-	    gvSendVarSizeData(transport,
-			      *string,
-			      (strlen(string[i]) + 1) * sizeof(char));
-	}
+        int i;
+        for (i = 0; i < count; i++)
+        {
+            gvSendVarSizeData(transport,
+                              *string,
+                              (strlen(string[i]) + 1) * sizeof(char));
+        }
     }
     else
     {
-	int passingType = 1;
-	gvSendData(transport, &passingType, sizeof(int));
+        int passingType = 1;
+        gvSendData(transport, &passingType, sizeof(int));
 
-	gvSendVarSizeData(transport, length, count * sizeof(GLint));
+        gvSendVarSizeData(transport, length, count * sizeof(GLint));
 
-	int i;
-	for (i = 0; i < count; i++)
-	{
-	    if (length[i] < 0)
-	    {
-		gvSendVarSizeData(transport,
-				  *string,
-				  (strlen(string[i]) + 1) * sizeof(char));
-	    }
-	    else
-	    {
-		gvSendVarSizeData(transport,
-				  *string,
-				  (length[i] + 1) * sizeof(char));
-	    }
-	}
+        int i;
+        for (i = 0; i < count; i++)
+        {
+            if (length[i] < 0)
+            {
+                gvSendVarSizeData(transport,
+                                  *string,
+                                  (strlen(string[i]) + 1) * sizeof(char));
+            }
+            else
+            {
+                gvSendVarSizeData(transport,
+                                  *string,
+                                  (length[i] + 1) * sizeof(char));
+            }
+        }
     }
 }
 
@@ -915,8 +1082,8 @@ glCompileShader(GLuint shader)
 
 void
 glGetShaderiv(GLuint  shader,
-	      GLenum  pname,
-	      GLint  *params)
+              GLenum  pname,
+              GLint  *params)
 {
     GVtransportptr  transport;
 
@@ -937,9 +1104,9 @@ glGetShaderiv(GLuint  shader,
 
 void
 glGetShaderInfoLog(GLuint   shader,
-		   GLsizei  bufsize,
-		   GLsizei *length,
-		   GLchar  *infolog)
+                   GLsizei  bufsize,
+                   GLsizei *length,
+                   GLchar  *infolog)
 {
     GVtransportptr  transport;
 
@@ -996,7 +1163,7 @@ glCreateProgram()
 
 void
 glAttachShader(GLuint program,
-	       GLuint shader)
+               GLuint shader)
 {
     GVtransportptr  transport;
 
@@ -1012,8 +1179,8 @@ glAttachShader(GLuint program,
 
 void
 glBindAttribLocation(GLuint        program,
-		     GLuint        index,
-		     const GLchar *name)
+                     GLuint        index,
+                     const GLchar *name)
 {
     GVtransportptr  transport;
 
@@ -1044,8 +1211,8 @@ glLinkProgram(GLuint program)
 
 void
 glGetProgramiv(GLuint  program,
-	       GLenum  pname,
-	       GLint  *params)
+               GLenum  pname,
+               GLint  *params)
 {
     GVtransportptr  transport;
 
@@ -1066,9 +1233,9 @@ glGetProgramiv(GLuint  program,
 
 void
 glGetProgramInfoLog(GLuint   program,
-		    GLsizei  bufsize,
-		    GLsizei *length,
-		    GLchar  *infolog)
+                    GLsizei  bufsize,
+                    GLsizei *length,
+                    GLchar  *infolog)
 {
     GVtransportptr  transport;
 
@@ -1104,9 +1271,9 @@ glDeleteProgram(GLuint program)
 
 void
 glClearColor(GLclampf red,
-	     GLclampf green,
-	     GLclampf blue,
-	     GLclampf alpha)
+             GLclampf green,
+             GLclampf blue,
+             GLclampf alpha)
 {
     GVtransportptr  transport;
 
@@ -1124,9 +1291,9 @@ glClearColor(GLclampf red,
 
 void
 glViewport(GLint   x,
-	   GLint   y,
-	   GLsizei width,
-	   GLsizei height)
+           GLint   y,
+           GLsizei width,
+           GLsizei height)
 {
     GVtransportptr  transport;
 
@@ -1160,6 +1327,7 @@ void
 glUseProgram(GLuint program)
 {
     GVtransportptr  transport;
+
 //    initProcessIfNotDoneAlready();
 //    initThreadIfNotDoneAlready();
 
@@ -1170,125 +1338,69 @@ glUseProgram(GLuint program)
 }
 
 void
-glVertexAttribPointer(GLuint        indx,
-		      GLint         size,
-		      GLenum        type,
-		      GLboolean     normalized,
-		      GLsizei       stride,
-		      const GLvoid *ptr)
+glVertexAttribPointer(GLuint        index,
+                      GLint         size,
+                      GLenum        type,
+                      GLboolean     normalized,
+                      GLsizei       stride,
+                      const GLvoid *ptr)
 {
-    GVtransportptr    transport;
-    GVvertexattribptr vertexAttrib = NULL;
-
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    GVvertexattribptr attrib;
 
     TRY
     {
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
-	{
-	    if ((vertexAttrib = malloc(sizeof(struct GVvertexattrib))) == NULL)
-	    {
-		THROW(e0, "malloc");
-	    }
+        if ((attrib = gvGetVertexAttrib(index)) == NULL)
+        {
+            THROW(e0, "gvGetVertexAttrib");
+        }
 
-	    vertexAttrib->index       = indx;
-	    vertexAttrib->size        = size;
-	    vertexAttrib->type        = type;
-	    vertexAttrib->normalized  = normalized;
-	    vertexAttrib->stride      = stride;
-	    vertexAttrib->ptr         = ptr;
-	
-	    if (gvSetCurrentVertexAttrib(vertexAttrib) == -1)
-	    {
-		THROW(e0, "gvSetCurrentVertexAttrib");
-	    }
-
-	    transport = gvGetCurrentThreadTransport();
-
-	    gvStartSending(transport, NULL, GV_CMDID_GLES2_VERTEXATTRIBPOINTER);
-	    gvSendData(transport, &indx, sizeof(GLuint));
-	    gvSendData(transport, &size, sizeof(GLint));
-	    gvSendData(transport, &type, sizeof(GLenum));
-	    gvSendData(transport, &normalized, sizeof(GLboolean));
-	    gvSendData(transport, &stride, sizeof(GLsizei));
-	}
+        attrib->index      = index;
+        attrib->size       = size;
+        attrib->type       = type;
+        attrib->normalized = normalized;
+        attrib->stride     = stride;
+        attrib->ptr        = (GLvoid *)ptr;
     }
     CATCH (e0)
     {
-	return;
+        return;
     }
 }
 
 void
 glEnableVertexAttribArray(GLuint index)
 {
-    GVtransportptr  transport;
-
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
-
-    transport = gvGetCurrentThreadTransport();
-
-    gvStartSending(transport, NULL, GV_CMDID_GLES2_ENABLEVERTEXATTRIBARRAY);
-    gvSendData(transport, &index, sizeof(GLuint));
+    TRY
+    {
+        if (gvEnableVertexAttrib(index) == -1)
+        {
+            THROW(e0, "gvEnableVertexAttrib");
+        }
+    }
+    CATCH (e0)
+    {
+        return;
+    }
 }
 
 void
 glDrawArrays(GLenum  mode,
-	     GLint   first,
-	     GLsizei count)
+             GLint   first,
+             GLsizei count)
 {
-    GVtransportptr    transport;
-    GVvertexattribptr vertexAttrib;
+    GVtransportptr transport;
 
 //    initProcessIfNotDoneAlready();
 //    initThreadIfNotDoneAlready();
 
-    TRY
-    {
-	if ((vertexAttrib = gvGetCurrentVertexAttrib()) == NULL)
-	{
-	    THROW(e0, "gvGetCurrentVertexAttrib");
-	}
-    }
-    CATCH (e0)
-    {
-	return;
-    }
-
     transport = gvGetCurrentThreadTransport();
-
-    size_t sizeofComponentType;
-    switch (vertexAttrib->type)
-    {
-    case GL_BYTE:
-	sizeofComponentType = sizeof(GLbyte);
-	break;
-    case GL_UNSIGNED_BYTE:
-	sizeofComponentType = sizeof(GLubyte);
-	break;
-    case GL_SHORT:
-	sizeofComponentType = sizeof(GLshort);
-	break;
-    case GL_UNSIGNED_SHORT:
-	sizeofComponentType = sizeof(GLushort);
-	break;
-    case GL_FIXED:
-	sizeofComponentType = sizeof(GLfixed);
-	break;
-    case GL_FLOAT:
-	sizeofComponentType = sizeof(GLfloat);
-	break;
-    }
 
     gvStartSending(transport, NULL, GV_CMDID_GLES2_DRAWARRAYS);
     gvSendData(transport, &mode, sizeof(GLenum));
     gvSendData(transport, &first, sizeof(GLint));
     gvSendData(transport, &count, sizeof(GLsizei));
-    gvSendVarSizeData(transport,
-		      vertexAttrib->ptr,
-		      count * vertexAttrib->size * sizeofComponentType);
+
+    sendVertexAttribArrays(first, count);
 }
 
 GLenum
@@ -1310,4 +1422,330 @@ glGetError()
     gvReceiveData(transport, &error, sizeof(GLenum));
 
     return error;
+}
+
+void
+glFinish()
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_FINISH);
+
+    gvStartReceiving(transport, NULL, callId);
+}
+
+void
+glPixelStorei(GLenum pname,
+              GLint  param)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_PIXELSTOREI);
+    gvSendData(transport, &pname, sizeof(GLenum));
+    gvSendData(transport, &param, sizeof(GLint));
+}
+
+void
+glGenTextures(GLsizei n,
+              GLuint  *textures)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GENTEXTURES);
+    gvSendData(transport, &n, sizeof(GLsizei));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, textures, n * sizeof(GLuint));
+}
+
+void
+glBindTexture(GLenum target,
+              GLuint texture)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_BINDTEXTURE);
+    gvSendData(transport, &target, sizeof(GLenum));
+    gvSendData(transport, &texture, sizeof(GLuint));
+}
+
+void
+glTexImage2D(GLenum        target,
+             GLint         level,
+             GLint         internalFormat,
+             GLsizei       width,
+             GLsizei       height,
+             GLint         border,
+             GLenum        format,
+             GLenum        type,
+             const GLvoid *data)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_TEXIMAGE2D);
+    gvSendData(transport, &target, sizeof(GLenum));
+    gvSendData(transport, &level, sizeof(GLint));
+    gvSendData(transport, &internalFormat, sizeof(GLint));
+    gvSendData(transport, &width, sizeof(GLsizei));
+    gvSendData(transport, &height, sizeof(GLsizei));
+    gvSendData(transport, &border, sizeof(GLint));
+    gvSendData(transport, &format, sizeof(GLenum));
+    gvSendData(transport, &type, sizeof(GLenum));
+
+    gvSendVarSizeData(transport,
+                      data,
+                      height
+                      * width
+                      * getNumComponentsByFormat(internalFormat)
+                      * getSizeByType(type));
+}
+
+void
+glTexParameteri(GLenum target,
+                GLenum pname,
+                GLint  param)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_TEXPARAMETERI);
+    gvSendData(transport, &target, sizeof(GLenum));
+    gvSendData(transport, &pname, sizeof(GLenum));
+    gvSendData(transport, &param, sizeof(GLint));
+}
+
+void
+glActiveTexture(GLenum texture)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_ACTIVETEXTURE);
+    gvSendData(transport, &texture, sizeof(GLenum));
+}
+
+void
+glUniform1i(GLint   location,
+            GLint   v0)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_UNIFORM1I);
+    gvSendData(transport, &location, sizeof(GLint));
+    gvSendData(transport, &v0, sizeof(GLint));
+}
+
+void
+glDrawElements(GLenum        mode,
+               GLsizei       count,
+               GLenum        type,
+               const GLvoid *indices)
+{
+    GVtransportptr transport;
+
+//    initProcessIfNotDoneAlready();
+//    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_DRAWELEMENTS);
+    gvSendData(transport, &mode, sizeof(GLenum));
+    gvSendData(transport, &count, sizeof(GLsizei));
+    gvSendData(transport, &type, sizeof(GLenum));
+
+    gvSendVarSizeData(transport, indices, count * getSizeByType(type));
+
+    /* TODO find more concise solution for this */
+    if (type == GL_UNSIGNED_BYTE)
+    {
+        sendVertexAttribArrays(0, getMaxIndexub(indices, count) + 1);
+    }
+    else if (type == GL_UNSIGNED_SHORT)
+    {
+        sendVertexAttribArrays(0, getMaxIndexus(indices, count) + 1);
+    }
+}
+
+GLint
+glGetAttribLocation(GLuint        program,
+                    const GLchar *name)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    GLint           location;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GETATTRIBLOCATION);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendVarSizeData(transport, name, (strlen(name) + 1) * sizeof(GLchar));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &location, sizeof(GLint));
+
+    return location;
+}
+
+GLint
+glGetUniformLocation(GLuint        program,
+                     const GLchar *name)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+    GLint           location;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GETUNIFORMLOCATION);
+    gvSendData(transport, &program, sizeof(GLuint));
+    gvSendVarSizeData(transport, name, (strlen(name) + 1) * sizeof(GLchar));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, &location, sizeof(GLint));
+
+    return location;
+}
+
+void
+glDeleteTextures(GLsizei       n,
+                 const GLuint *textures)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_DELETETEXTURES);
+    gvSendData(transport, &n, sizeof(GLsizei));
+
+    /* TODO replace with gvSendData */
+    gvSendVarSizeData(transport, textures, n * sizeof(GLuint));
+}
+
+void
+glGenBuffers(GLsizei n,
+	     GLuint  *buffers)
+{
+    GVtransportptr  transport;
+
+    GVcallid        callId;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    callId = gvStartSending(transport, NULL, GV_CMDID_GLES2_GENBUFFERS);
+    gvSendData(transport, &n, sizeof(GLsizei));
+
+    gvStartReceiving(transport, NULL, callId);
+    gvReceiveData(transport, buffers, n * sizeof(GLuint));
+}
+
+void
+glBindBuffer(GLenum target,
+	     GLuint buffer)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_BINDBUFFER);
+    gvSendData(transport, &target, sizeof(GLenum));
+    gvSendData(transport, &buffer, sizeof(GLuint));
+
+    gvSetBufferBound(target, buffer);
+}
+
+void
+glBufferData(GLenum        target,
+	     GLsizeiptr    size,
+	     const GLvoid *data,
+	     GLenum        usage)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_BUFFERDATA);
+    gvSendData(transport, &target, sizeof(GLenum));
+    gvSendData(transport, &size, sizeof(GLsizeiptr));
+    gvSendData(transport, data, size);
+    gvSendData(transport, &usage, sizeof(GLenum));
+}
+
+void
+glDeleteBuffers(GLsizei       n,
+		const GLuint *buffers)
+{
+    GVtransportptr  transport;
+
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
+
+    transport = gvGetCurrentThreadTransport();
+
+    gvStartSending(transport, NULL, GV_CMDID_GLES2_DELETEBUFFERS);
+    gvSendData(transport, &n, sizeof(GLsizei));
+
+    /* TODO replace with gvSendData */
+    gvSendVarSizeData(transport, buffers, n * sizeof(GLuint));
 }

@@ -90,6 +90,22 @@ typedef int GVcallid;
 #define GV_CMDID_GLES2_ENABLEVERTEXATTRIBARRAY     0x3d
 #define GV_CMDID_GLES2_DRAWARRAYS                  0x3e
 #define GV_CMDID_GLES2_GETERROR                    0x3f
+#define GV_CMDID_GLES2_FINISH                      0x40
+#define GV_CMDID_GLES2_PIXELSTOREI                 0x41
+#define GV_CMDID_GLES2_GENTEXTURES                 0x42
+#define GV_CMDID_GLES2_BINDTEXTURE                 0x43
+#define GV_CMDID_GLES2_TEXIMAGE2D                  0x44
+#define GV_CMDID_GLES2_TEXPARAMETERI               0x45
+#define GV_CMDID_GLES2_ACTIVETEXTURE               0x46
+#define GV_CMDID_GLES2_UNIFORM1I                   0x47
+#define GV_CMDID_GLES2_DRAWELEMENTS                0x48
+#define GV_CMDID_GLES2_GETATTRIBLOCATION           0x49
+#define GV_CMDID_GLES2_GETUNIFORMLOCATION          0x4a
+#define GV_CMDID_GLES2_DELETETEXTURES              0x4b
+#define GV_CMDID_GLES2_GENBUFFERS                  0x4c
+#define GV_CMDID_GLES2_BINDBUFFER                  0x4d
+#define GV_CMDID_GLES2_BUFFERDATA                  0x4e
+#define GV_CMDID_GLES2_DELETEBUFFERS               0x4f
 
 /*! ***************************************************************************
  * \brief
@@ -101,8 +117,8 @@ typedef int GVcallid;
  */
 int
 gvReceiveData(GVtransportptr  transport,
-	      void           *toAddr, 
-	      size_t          length);
+              void           *toAddr, 
+              size_t          length);
 
 /*! ***************************************************************************
  * \brief
@@ -123,8 +139,8 @@ void
  */
 int
 gvSendData(GVtransportptr  transport,
-	   const void     *fromAddr,
-	   size_t          length);
+           const void     *fromAddr,
+           size_t          length);
 
 /*! ***************************************************************************
  * \brief
@@ -136,7 +152,7 @@ gvSendData(GVtransportptr  transport,
  */
 int
 gvSendVarSizeData(GVtransportptr  transport,
-		  const void     *fromAddr,
-		  size_t          length);
+                  const void     *fromAddr,
+                  size_t          length);
 
 #endif /* SERIALIZER_H */

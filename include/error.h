@@ -19,7 +19,8 @@
  */
 
 #define TRY
-#define THROW(to, msg) printf("ERROR %s IN FILE %s NEAR LINE %i\n", msg, __FILE__, __LINE__); goto to
+// #define THROW(to, msg) printf("ERROR %s IN FILE %s NEAR LINE %i\n", msg, __FILE__, __LINE__); goto to
+#define THROW(to, msg) goto to
 #define CATCH(to) while (0) to:
 
 #endif /* ERROR_H_ */

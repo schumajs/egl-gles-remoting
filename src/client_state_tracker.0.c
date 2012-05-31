@@ -9,7 +9,10 @@
  * \details
  */
 
+#include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
+#include <uthash.h>
 
 #include "client_state_tracker.0.h"
 #include "error.h"
@@ -20,48 +23,152 @@
  * Client state tracker implementation
  */
 
-#define CURRENT_DISPLAY_KEY      0x0
-#define CURRENT_CONTEXT_KEY      0x1
-#define CURRENT_TRANSPORT_KEY    0x2
-#define CURRENT_VERTEXATTRIB_KEY 0x3
+#define CURRENT_DISPLAY_KEY            0x0
+#define CURRENT_CONTEXT_KEY            0x1
+#define CURRENT_TRANSPORT_KEY          0x2
+#define VERTEX_ATTRIB_KEY              0x3
+#define NUM_ENABLED_VERTEX_ATTRIBS_KEY 0x4
+#define VERTEX_BUFFER_KEY              0x5
 
 static pthread_rwlock_t processStateLock        = PTHREAD_RWLOCK_INITIALIZER;
 static int              threadStateMapInitiated = 0;
 
-#define initIfNotDoneAlready()					\
-    do {							\
-	if (!threadStateMapInitiated)				\
-	{							\
-	    if (gvInitThreadStateMap() == -1) return -1;	\
-	    threadStateMapInitiated = 1;			\
-	}							\
+/* ***************************************************************************
+ * Initialization
+ */
+
+static int
+initVertexAttribs()
+{
+    GVvertexattribptr *attribs;
+    size_t             attribsSize = MAX_NUM_VERTEX_ATTRIBS
+	                             * sizeof(struct GVvertexattrib);
+
+    if ((attribs = malloc(attribsSize)) == NULL)
+    {
+	return -1;
+    }
+
+    memset(attribs, 0, attribsSize);
+
+    if (gvPutThreadStateItem(VERTEX_ATTRIB_KEY, attribs) == -1)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+initNumEnabledVertexAttribs()
+{
+    int *num;
+
+    if ((num = malloc(sizeof(int))) == NULL)
+    {
+	return -1;
+    }
+
+    *num = 0;
+
+    if (gvPutThreadStateItem(NUM_ENABLED_VERTEX_ATTRIBS_KEY, num) == -1)
+    {
+	return -1;
+    }
+
+    if (gvPutThreadStateItem(NUM_ENABLED_VERTEX_ATTRIBS_KEY, num) == -1)
+    {
+	return -1;
+    }
+    return 0;
+}
+
+struct VertexBuffer {
+    GLuint id;
+
+    UT_hash_handle hh;
+};
+
+static int
+initVertexBuffers()
+{
+    struct VertexBuffer **buffers;
+    size_t                buffersSize = 2 * sizeof(struct VertexBuffer*);
+
+    if ((buffers = malloc(buffersSize)) == NULL)
+    {
+	return -1;
+    }
+    
+    memset(buffers, 0, buffersSize);
+
+    if (gvPutThreadStateItem(VERTEX_BUFFER_KEY, buffers) == -1)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+#define initIfNotDoneAlready()						\
+    do {								\
+	if (!threadStateMapInitiated)					\
+	{								\
+	    if (gvInitThreadStateMap() == -1)				\
+	    {								\
+		return -1;						\
+									\
+	    }								\
+									\
+	    if (initVertexAttribs() == -1)				\
+	    {								\
+		return -1;						\
+	    }								\
+									\
+	    if (initNumEnabledVertexAttribs() == -1)			\
+	    {								\
+		return -1;						\
+	    }								\
+	    								\
+	    if (initVertexBuffers() == -1)				\
+	    {								\
+		return -1;						\
+	    }								\
+	    								\
+	    threadStateMapInitiated = 1;				\
+	}								\
     } while (0)
 
-struct ForeachArg {
-    EGLDisplay            display;
-    GVforeachcontextfunc  func;
-    void                 *arg;
+
+/* ***************************************************************************
+ * Context
+ */
+
+struct ContextIterFuncArg {
+    EGLDisplay        display;
+    GVcstateiterfunc  func;
+    void             *arg;
 };
 
 static void
-foreachContextStateCallback(unsigned long int  key,
-			    void              *value,
-			    void              *arg)
+contextIterFunc(unsigned long int  key,
+		void              *value,
+		void              *arg)
 {
-    struct ForeachArg *foreachArg = (struct ForeachArg *)arg;
-    GVcontextstateptr  state      = (GVcontextstateptr)value;
+    struct ContextIterFuncArg *iterFuncArg = (struct ContextIterFuncArg *)arg;
+    GVcontextstateptr          state       = (GVcontextstateptr)value;
     
-    if (state->display == foreachArg->display)
+    if (state->display == iterFuncArg->display)
     {
-	(foreachArg->func)(state, foreachArg->arg);
+	(iterFuncArg->func)(state, iterFuncArg->arg);
     }
 }
 
 static void
-setAllMarkedDestroyedCallback(GVcontextstateptr  state,
-			      void              *arg)
+setAllMarkedDestroyedIterFunc(void *state,
+			      void *arg)
 {
-    state->markedDestroyed = *((int *)arg);
+    ((GVcontextstateptr) state)->markedDestroyed = *((int *)arg);
 }
 
 int
@@ -143,11 +250,11 @@ gvGetEglContextState(EGLDisplay display,
 }
 
 int
-gvForeachEglContextState(EGLDisplay            display,
-			 GVforeachcontextfunc  func,
-			 void                 *arg)
+gvForeachEglContextState(EGLDisplay        display,
+			 GVcstateiterfunc  func,
+			 void             *arg)
 {
-    struct ForeachArg foreachArg;
+    struct ContextIterFuncArg iterFuncArg;
 
     TRY
     {
@@ -156,12 +263,12 @@ gvForeachEglContextState(EGLDisplay            display,
             THROW(e0, "pthread_rwlock_wrlock");
         }
 
-	foreachArg.display = display;
-	foreachArg.func    = func;
-	foreachArg.arg     = arg;
+	iterFuncArg.display = display;
+	iterFuncArg.func    = func;
+	iterFuncArg.arg     = arg;
 
-	if (gvForeachProcessStateItem(foreachContextStateCallback,
-				      &foreachArg) == -1)
+	if (gvForeachProcessStateItem(contextIterFunc,
+				      &iterFuncArg) == -1)
 	{
 	    THROW(e1, "gvForeachProcessStateItem");
 	}
@@ -407,7 +514,7 @@ gvSetAllMarkedDestroyed(EGLDisplay display,
     TRY
     {
 	if (gvForeachEglContextState(display,
-				     setAllMarkedDestroyedCallback,
+				     setAllMarkedDestroyedIterFunc,
 				     &markedDestroyed) == -1)
 	{
 	    THROW(e0, "gvForeachEglContextState");
@@ -420,6 +527,10 @@ gvSetAllMarkedDestroyed(EGLDisplay display,
 
     return 0;
 }
+
+/* ***************************************************************************
+ * Thread display, context, transport
+ */
 
 EGLDisplay
 gvGetCurrentThreadDisplay()
@@ -451,7 +562,6 @@ gvSetCurrentThreadDisplay(EGLDisplay display)
 
     TRY
     {
-	/* NOTE: only set once per thread in concept 0, so no collisions */
 	if (gvPutThreadStateItem(CURRENT_DISPLAY_KEY, display) == -1)
 	{
 	    THROW(e0, "gvPutThreadStateItem");
@@ -495,7 +605,6 @@ gvSetCurrentThreadContext(EGLContext context)
 
     TRY
     {
-	/* NOTE: only set once per thread in concept 0, so no collisions */
 	if (gvPutThreadStateItem(CURRENT_CONTEXT_KEY, context) == -1)
 	{
 	    THROW(e0, "gvPutThreadStateItem");
@@ -540,7 +649,6 @@ gvSetCurrentThreadTransport(GVtransportptr transport)
 
     TRY
     {
-	/* NOTE: only set once per thread in concept 0, so no collisions */
 	if (gvPutThreadStateItem(CURRENT_TRANSPORT_KEY, transport) == -1)
 	{
 	    THROW(e0, "gvPutThreadStateItem");
@@ -554,18 +662,44 @@ gvSetCurrentThreadTransport(GVtransportptr transport)
     return 0;
 }
 
-GVvertexattribptr
-gvGetCurrentVertexAttrib()
-{
-    GVvertexattribptr vertexAttrib;
+/* ***************************************************************************
+ * Vertex attribs
+ */
 
-    initIfNotDoneAlready();
+int
+gvDelVertexAttrib(GLuint index)
+{
+    GVvertexattribptr attribs;
 
     TRY
     {
-	if ((vertexAttrib
+	if ((attribs
 	     = (GVvertexattribptr) gvGetThreadStateItem(
-		 CURRENT_VERTEXATTRIB_KEY)) == NULL)
+		 VERTEX_ATTRIB_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}	
+
+	memset(&attribs[index], 0, sizeof(struct GVvertexattrib));
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+GVvertexattribptr
+gvGetVertexAttrib(GLuint index)
+{
+    GVvertexattribptr attribs;
+
+    TRY
+    {
+	if ((attribs
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 VERTEX_ATTRIB_KEY)) == NULL)
 	{
 	    THROW(e0, "gvGetThreadStateItem");
 	}
@@ -575,20 +709,93 @@ gvGetCurrentVertexAttrib()
 	return NULL;
     }
 
-    return vertexAttrib;
+    return &attribs[index];
 }
 
 int
-gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib)
+gvPutVertexAttrib(GLuint            index,
+		  GVvertexattribptr vertexAttrib)
 {
-    initIfNotDoneAlready();
+    GVvertexattribptr attribs;
 
     TRY
     {
-	/* NOTE: only set once per thread in concept 0, so no collisions */
-	if (gvPutThreadStateItem(CURRENT_VERTEXATTRIB_KEY, vertexAttrib) == -1)
+	if ((attribs
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 VERTEX_ATTRIB_KEY)) == NULL)
 	{
-	    THROW(e0, "gvPutThreadStateItem");
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	memcpy(&attribs[index], vertexAttrib, sizeof(struct GVvertexattrib));
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+getNumEnabledVertexAttribs()
+{
+    int *num;
+
+    TRY
+    { 
+	if ((num = (int *)gvGetThreadStateItem(
+		 NUM_ENABLED_VERTEX_ATTRIBS_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return *num;
+}
+
+static int
+setNumEnabledVertexAttribs(int num)
+{
+    int *tempNum;
+
+    TRY
+    { 
+	if ((tempNum = (int *)gvGetThreadStateItem(
+		 NUM_ENABLED_VERTEX_ATTRIBS_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    
+	*tempNum = num;
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+static int
+incNumEnabledVertexAttribs()
+{
+    int num;
+
+    TRY
+    { 
+	if ((num = getNumEnabledVertexAttribs()) == -1)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	if (setNumEnabledVertexAttribs(num + 1) == -1)
+	{
+	    THROW(e0, "setNumEnabledVertexAttribs");
 	}
     }
     CATCH (e0)
@@ -597,5 +804,187 @@ gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib)
     }
 
     return 0;
+}
+
+static int
+decNumEnabledVertexAttribs()
+{
+    int num;
+
+    TRY
+    { 
+	if ((num = getNumEnabledVertexAttribs()) == -1)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	if (num > 0)
+	{
+	    if (setNumEnabledVertexAttribs(num - 1) == -1)
+	    {
+		THROW(e0, "setNumEnabledVertexAttribs");
+	    }
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvEnableVertexAttrib(GLuint index)
+{
+    GVvertexattribptr attribs;
+
+    TRY
+    {
+	if ((attribs
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 VERTEX_ATTRIB_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	if (!attribs[index].enabled)
+	{
+	    attribs[index].enabled = 1;
+
+	    if (incNumEnabledVertexAttribs() == -1)
+	    {
+		THROW(e0, "incNumEnabledVertexAttribs");
+	    }
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvDisableVertexAttrib(GLuint index)
+{
+    GVvertexattribptr attribs;
+
+    TRY
+    {
+	if ((attribs
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 VERTEX_ATTRIB_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	if (attribs[index].enabled)
+	{
+	    attribs[index].enabled = 0;
+
+	    if (decNumEnabledVertexAttribs() == -1)
+	    {
+		THROW(e0, "decNumEnabledVertexAttribs");
+	    }
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvGetEnabledVertexAttribs(GVvertexattribptr *attribs,
+			  int               *numAttribs)
+{
+    GVvertexattribptr tempAttribs;
+    int               tempNumAttribs;
+
+    TRY
+    { 
+	if ((tempAttribs
+	     = (GVvertexattribptr) gvGetThreadStateItem(
+		 VERTEX_ATTRIB_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	if ((tempNumAttribs = getNumEnabledVertexAttribs()) == -1)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    *attribs    = tempAttribs;
+    *numAttribs = tempNumAttribs;
+
+    return 0;
+}
+
+/* ***************************************************************************
+ * Vertex buffers
+ */
+
+int
+gvSetBufferBound(GLenum target,
+		 GLuint buffer)
+{
+    struct VertexBuffer **buffers, *tempBuffer;
+
+    TRY
+    { 
+	if ((buffers
+	     = (struct VertexBuffer **)gvGetThreadStateItem(
+		 VERTEX_BUFFER_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	HASH_FIND_INT(buffers[target % 2], &buffer, tempBuffer);
+	if (tempBuffer == NULL)
+	{
+	    tempBuffer = malloc(sizeof(struct VertexBuffer));
+	    tempBuffer->id = buffer;
+	    HASH_ADD_INT(buffers[target % 2], id, tempBuffer);
+	}
+
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
+
+    return 0;
+}
+
+int
+gvIsAnyBufferBound()
+{
+    struct VertexBuffer **buffers;
+
+    TRY
+    { 
+	if ((buffers
+	     = (struct VertexBuffer **)gvGetThreadStateItem(
+		 VERTEX_BUFFER_KEY)) == NULL)
+	{
+	    THROW(e0, "gvGetThreadStateItem");
+	}
+
+	return HASH_COUNT(buffers[0]) > 0 || HASH_COUNT(buffers[1]) > 0;
+    }
+    CATCH (e0)
+    {
+	return -1;
+    }
 }
 

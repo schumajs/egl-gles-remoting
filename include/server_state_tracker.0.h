@@ -81,21 +81,4 @@ gvGetCurrentThreadTransport(void);
 int
 gvSetCurrentThreadTransport(GVtransportptr transport);
 
-/*! ***************************************************************************
- * \brief
- *
- * \return
- */
-GVvertexattribptr
-gvGetCurrentVertexAttrib(void);
-
-/*! ***************************************************************************
- * \brief
- *
- * \param  [in] vertexAttrib
- * \return
- */
-int
-gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib);
-
 #endif /* SERVER_STATE_TRACKER_0_H_ */

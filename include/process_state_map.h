@@ -12,7 +12,7 @@
 #ifndef PROCESS_STATE_MAP_H_
 #define PROCESS_STATE_MAP_H_
 
-typedef void (*GVforeachfunc)(unsigned long int, void*, void*);
+typedef void (*GVpstateiterfunc)(unsigned long int, void*, void*);
 
 /*! ***************************************************************************
  * \brief
@@ -40,8 +40,8 @@ void
  * \return
  */
 int
-gvForeachProcessStateItem(GVforeachfunc  func,
-			  void          *arg);
+gvForeachProcessStateItem(GVpstateiterfunc  func,
+			  void             *arg);
 
 /*! ***************************************************************************
  * \brief
