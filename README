@@ -16,8 +16,8 @@
 
 egl-gles-remoting is a prototype implementation of EGL / OpenGL ES 2.0 remoting
 via shared memory. The project is in a very early stage. Code and documentation
-quality is rather bad at the moment. Expect steady improvements in the course of
-the next few weeks. A technical paper elaborating on the concepts and the
+quality are rather bad at the moment. Expect steady improvements in the course
+of the next few weeks. A technical paper elaborating on the concepts and the
 implementation will be uploaded soon.
 
 If you're eager to try it anyway, clone it and run make. Make sure the following
