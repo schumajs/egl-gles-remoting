@@ -17,7 +17,7 @@
 #include <EGL/egl.h>
 
 #include "client_serializer.h"
-#include "client_state_tracker.0.h"
+#include "client_state_tracker.h"
 #include "error.h"
 #include "heap_manager.h"
 #include "janitor.h"

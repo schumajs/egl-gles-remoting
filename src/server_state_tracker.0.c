@@ -14,7 +14,7 @@
 
 #include "error.h"
 #include "process_state_map.h"
-#include "server_state_tracker.0.h"
+#include "server_state_tracker.h"
 #include "thread_state_map.h"
 
 /* ***************************************************************************

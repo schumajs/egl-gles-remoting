@@ -17,7 +17,7 @@
 #include "error.h"
 #include "server_dispatcher.h"
 #include "server_serializer.h"
-#include "server_state_tracker.0.h"
+#include "server_state_tracker.h"
 
 static size_t
 getSizeByType(GLenum type)

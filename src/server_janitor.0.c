@@ -17,7 +17,7 @@
 #include "server_dispatcher.h"
 #include "server_janitor.h"
 #include "server_serializer.h"
-#include "server_state_tracker.0.h"
+#include "server_state_tracker.h"
 #include "shm_stream_transport.h"
 
 extern GVdispatchfunc eglGlesJumpTable[64];

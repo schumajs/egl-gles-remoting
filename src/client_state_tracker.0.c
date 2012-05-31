@@ -14,7 +14,7 @@
 #include <string.h>
 #include <uthash.h>
 
-#include "client_state_tracker.0.h"
+#include "client_state_tracker.h"
 #include "error.h"
 #include "process_state_map.h"
 #include "thread_state_map.h"
