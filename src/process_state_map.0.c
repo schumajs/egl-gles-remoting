@@ -79,8 +79,8 @@ void
 }
 
 int
-gvForeachProcessStateItem(GVforeachfunc  func,
-			  void          *arg)
+gvForeachProcessStateItem(GVpstateiterfunc  func,
+			  void             *arg)
 {
     struct Item *item, *tempItem;
 

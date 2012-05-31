@@ -147,8 +147,8 @@ void
 }
 
 int
-gvForeachThreadStateItem(GVforeachfunc  func,
-			 void          *arg)
+gvForeachThreadStateItem(GVtstateiterfunc  func,
+			 void             *arg)
 {
     struct Item *item, *tempItem;
     struct Item *hashtable;

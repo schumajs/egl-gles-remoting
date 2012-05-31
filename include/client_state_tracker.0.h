@@ -17,6 +17,8 @@
 
 #include "transport.h" 
 
+#define MAX_NUM_VERTEX_ATTRIBS 32
+
 struct GVcontextstate {
     /* Context */
     EGLDisplay     display;
@@ -32,9 +34,11 @@ struct GVcontextstate {
 
 typedef struct GVcontextstate *GVcontextstateptr;
 
-typedef void (*GVforeachcontextfunc)(GVcontextstateptr, void*);
-
 struct GVvertexattrib {
+    /* Vertex attrib enabled? */
+    int           enabled;
+
+    /* Vertex attrib */
     GLuint        index;
     GLint         size;
     GLenum        type;
@@ -44,6 +48,8 @@ struct GVvertexattrib {
 };
 
 typedef struct GVvertexattrib *GVvertexattribptr;
+
+typedef void (*GVcstateiterfunc)(void*, void*);
 
 /*! ***************************************************************************
  * \brief
@@ -75,9 +81,9 @@ gvGetEglContextState(EGLDisplay display,
  * \return
  */
 int
-gvForeachEglContextState(EGLDisplay            display,
-			 GVforeachcontextfunc  func,
-                         void                 *arg);
+gvForeachEglContextState(EGLDisplay        display,
+			 GVcstateiterfunc  func,
+                         void             *arg);
 
 /*! ***************************************************************************
  * \brief
@@ -178,7 +184,7 @@ gvGetCurrentThreadContext(void);
 /*! ***************************************************************************
  * \brief
  *
- * \param  [in] transport
+ * \param  [in] context
  * \return
  */
 int
@@ -204,18 +210,101 @@ gvSetCurrentThreadTransport(GVtransportptr transport);
 /*! ***************************************************************************
  * \brief
  *
+ * \param  [in] index
  * \return
  */
-GVvertexattribptr
-gvGetCurrentVertexAttrib(void);
+int
+gvDelVertexAttrib(GLuint index);
+
 
 /*! ***************************************************************************
  * \brief
  *
+ * \param  [in] index
+ * \return
+ */
+GVvertexattribptr
+gvGetVertexAttrib(GLuint index);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] index
  * \param  [in] vertexAttrib
  * \return
  */
 int
-gvSetCurrentVertexAttrib(GVvertexattribptr vertexAttrib);
+gvPutVertexAttrib(GLuint            index,
+		  GVvertexattribptr vertAttrib);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] index
+ * \return
+ */
+int
+gvEnableVertexAttrib(GLuint index);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] index
+ * \return
+ */
+int
+gvDisableVertexAttrib(GLuint index);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] attribs
+ * \param  [in] numAttribs
+ * \return
+ */
+int
+gvGetEnabledVertexAttribs(GVvertexattribptr *attribs,
+			  int               *numAttribs);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] target
+ * \param  [in] buffer
+ * \return
+ */
+int
+gvSetBufferBound(GLenum target,
+		 GLuint buffer);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] target
+ * \param  [in] buffer
+ * \return
+ */
+int
+gvIsBufferBound(GLenum target,
+		GLuint buffer);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \return
+ */
+int
+gvIsAnyBufferBound(void);
+
+/*! ***************************************************************************
+ * \brief
+ *
+ * \param  [in] target
+ * \param  [in] buffer
+ * \return
+ */
+int
+gvSetBufferUnbound(GLenum target,
+		   GLuint buffer);
 
 #endif /* CLIENT_STATE_TRACKER_H_*/
