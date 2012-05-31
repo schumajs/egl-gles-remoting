@@ -19,8 +19,6 @@
 #include "server_serializer.h"
 #include "server_state_tracker.0.h"
 
-typedef char GLchar;
-
 static size_t
 getSizeByType(GLenum type)
 {

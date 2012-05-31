@@ -15,8 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
-#include <X11/Xlib.h>
 
 #include "client_serializer.h"
 #include "client_state_tracker.0.h"
@@ -26,10 +24,7 @@
 #include "shared_memory.h"
 #include "shm_stream_transport.h"
 
-typedef char GLchar;
-
 #define TRANSPORT_LENGTH 266240
-//#define TRANSPORT_LENGTH 12288 // (3 * 4096)
 
 #define DEFAULT_DISPLAY  (void *)1
 #define DEFAULT_CONTEXT  (void *)1
@@ -366,42 +361,42 @@ getMaxIndexus(const GLushort *indices,
 /* TODO are there any issues with double checked locking? */
 #define initProcessIfNotDoneAlready()                           \
     do {                                                        \
-    if (!processInitiated)                                  \
-    {                                                       \
-    pthread_mutex_lock(&initProcessLock);               \
-    if (!processInitiated)                              \
-    {                                                   \
-    if (initEglGlesClient() == -1)                  \
-    {                                               \
-    pthread_mutex_unlock(&initProcessLock);     \
-    /* TODO ? */                                \
-    exit(2);                                    \
-    }                                               \
-	processInitiated = 1;                           \
-	}                                                   \
-    pthread_mutex_unlock(&initProcessLock);             \
-    }                                                       \
+	if (!processInitiated)                                  \
+	{                                                       \
+	    pthread_mutex_lock(&initProcessLock);               \
+	    if (!processInitiated)                              \
+	    {                                                   \
+		if (initEglGlesClient() == -1)                  \
+		{                                               \
+		    pthread_mutex_unlock(&initProcessLock);     \
+		    /* TODO ? */                                \
+		    exit(2);                                    \
+		}                                               \
+		processInitiated = 1;                           \
+	    }                                                   \
+	    pthread_mutex_unlock(&initProcessLock);             \
+	}                                                       \
     } while (0)
 
 #define initThreadIfNotDoneAlready()                                    \
     do {                                                                \
-    if (gvGetCurrentThreadTransport() == NULL)                      \
-    {                                                               \
-    GVcontextstateptr state;                                    \
+	if (gvGetCurrentThreadTransport() == NULL)                      \
+	{                                                               \
+	    GVcontextstateptr state;                                    \
+	    								\
+	    if ((state                                                  \
+		 = gvGetEglContextState(DEFAULT_DISPLAY,                \
+					DEFAULT_CONTEXT)) == NULL)      \
+	    {                                                           \
+		/* TODO ? */                                            \
+		exit(2);                                                \
+	    }                                                           \
                                                                         \
-    if ((state                                                  \
-	= gvGetEglContextState(DEFAULT_DISPLAY,                \
-			       DEFAULT_CONTEXT)) == NULL)      \
-    {                                                           \
-    /* TODO ? */                                            \
-    exit(2);                                                \
-    }                                                           \
-                                                                        \
-    if (gvSetCurrentThreadTransport(state->transport) == -1)    \
-    {                                                           \
-    exit(2);                                                \
-    }                                                           \
-    }                                                               \
+	    if (gvSetCurrentThreadTransport(state->transport) == -1)    \
+	    {                                                           \
+		exit(2);                                                \
+	    }                                                           \
+	}                                                               \
     } while (0)
 
 /* ***************************************************************************
@@ -1297,8 +1292,8 @@ glViewport(GLint   x,
 {
     GVtransportptr  transport;
 
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1314,8 +1309,8 @@ glClear(GLbitfield mask)
 {
     GVtransportptr  transport;
 
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1328,8 +1323,8 @@ glUseProgram(GLuint program)
 {
     GVtransportptr  transport;
 
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1390,8 +1385,8 @@ glDrawArrays(GLenum  mode,
 {
     GVtransportptr transport;
 
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
@@ -1585,8 +1580,8 @@ glDrawElements(GLenum        mode,
 {
     GVtransportptr transport;
 
-//    initProcessIfNotDoneAlready();
-//    initThreadIfNotDoneAlready();
+    initProcessIfNotDoneAlready();
+    initThreadIfNotDoneAlready();
 
     transport = gvGetCurrentThreadTransport();
 
