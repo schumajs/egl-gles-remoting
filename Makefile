@@ -1,5 +1,5 @@
 ###############################################################################
-# make target [CONCEPT=1-1]
+# make target
 # target:
 #   all
 #   clean / cleanall (+./docs)
@@ -13,81 +13,65 @@
 
 AR	 := ar
 CC     	 := gcc
-CFLAGS 	 := -Wall
+CFLAGS   := -Wall -fPIC
+LD_FLAGS :=
 
-VER_MAJ  := 1
-VER_MIN  := 0
-VER_REV  := 1
+SRCS  	 := src
 
 ###############################################################################
 # Shared lib
 
-SH_TAR := sharedlib
-SH_BIN := gvshared
-
-SH_C0_OBJS  := cond_var.0.o lock.0.o process_state_map.0.o rwlock.0.o serializer.0.o shared_memory.0.o sleep.0.o thread_state_map.0.o shm_stream_transport.0.o
-SH_C1_OBJS  :=
+SHARED_LIB_BIN     := gvshared
+SHARED_LIB_OBJS    := 			\
+	cond_var.o			\
+	lock.o				\
+	process_state_map.o		\
+	rwlock.o			\
+	serializer.o			\
+	shared_memory.o			\
+	sleep.o				\
+	thread_state_map.o		\
+	shm_stream_transport.o
+SHARED_LIB_OBJS     := $(SHARED_LIB_OBJS:%=src/%)
+SHARED_LIB_LIBS     := -lpthread -lvrb
+SHARED_LIB_VERSION  := 1.0.1
 
 ###############################################################################
 # Client lib
 
-CL_TAR := clientlib
-CL_BIN := gvclient
-
-CL_C0_OBJS  := client_egl_gles.0.o client_heap_manager.0.o client_janitor.0.o client_serializer.0.o client_state_tracker.0.o
-CL_C1_OBJS  :=
+CLIENT_LIB_BIN      := gvclient
+CLIENT_LIB_OBJS     :=		\
+	client_egl_gles.o	\
+	client_heap_manager.o	\
+	client_janitor.o	\
+	client_serializer.o	\
+	client_state_tracker.o
+CLIENT_LIB_OBJS     := $(CLIENT_LIB_OBJS:%=src/%)
+CLIENT_LIB_VERSION  := 1.0.1
 
 ###############################################################################
 # Server lib
 
-SL_TAR := serverlib
-SL_BIN := gvserver
-
-SL_C0_OBJS  := server_egl_gles.0.o server_dispatcher.0.o server_heap_manager.0.o server_janitor.0.o server_serializer.0.o server_state_tracker.0.o
-SL_C1_OBJS  :=
+SERVER_LIB_BIN      := gvserver
+SERVER_LIB_OBJS     :=		\
+	server_egl_gles.o	\
+	server_dispatcher.o	\
+	server_heap_manager.o	\
+	server_janitor.o	\
+	server_serializer.o	\
+	server_state_tracker.o
+SERVER_LIB_OBJS     := $(SERVER_LIB_OBJS:%=src/%)
+SERVER_LIB_LIBS     := -ldlmalloc -lEGL -lGLESv2
+SERVER_LIB_VERSION  := 1.0.1
 
 ###############################################################################
 # Conditionals and rules
 
 #
-# Get concept source files
-#
-
-ifndef CONCEPT
-	CONCEPT := 0
-endif
-
-ifeq ($(CONCEPT), 0)
-	CL_OBJS := $(CL_C0_OBJS:%=src/%)
-	SL_OBJS := $(SL_C0_OBJS:%=src/%)
-        SH_OBJS := $(SH_C0_OBJS:%=src/%)
-else ifeq ($(CONCEPT), 1)
-	CL_OBJS := $(CL_C1_OBJS:%=src/%)
-	SL_OBJS := $(SL_C1_OBJS:%=src/%)
-	SH_OBJS := $(SH_C1_OBJS:%=src/%)
-endif
-
-CL_BIN_LIB := lib$(CL_BIN)
-CL_BIN_MAJ := $(CL_BIN_LIB).so.$(VER_MAJ)
-CL_BIN_REV := $(CL_BIN_MAJ).$(VER_MIN).$(VER_REV)
-SL_BIN_LIB := lib$(SL_BIN)
-SL_BIN_MAJ := $(SL_BIN_LIB).so.$(VER_MAJ)
-SL_BIN_REV := $(SL_BIN_MAJ).$(VER_MIN).$(VER_REV)
-SH_BIN_LIB := lib$(SH_BIN)
-SH_BIN_MAJ := $(SH_BIN_LIB).so.$(VER_MAJ)
-SH_BIN_REV := $(SH_BIN_MAJ).$(VER_MIN).$(VER_REV)
-
-#
-# Use -fPIC flag for shared, client and server so's
-#
-
-$(CL_TAR) $(SL_TAR) $(SH_TAR): CFLAGS += -fPIC
-
-#
 # All
 #
 
-all: $(SH_TAR) $(CL_TAR) $(SL_TAR)
+all: sharedlib clientlib serverlib
 
 #
 # Phony
@@ -99,28 +83,22 @@ all: $(SH_TAR) $(CL_TAR) $(SL_TAR)
 # Shared lib
 #
 
-$(SH_TAR): $(SH_OBJS)
-	$(CC) -shared -Wl,-soname,$(SH_BIN_MAJ) -o $(SH_BIN_REV) $(SH_OBJS) -lpthread -lvrb
-	ln -sf $(SH_BIN_REV) $(SH_BIN_MAJ)
-	ln -sf $(SH_BIN_REV) $(SH_BIN_LIB)
+sharedlib: $(SHARED_LIB_OBJS)
+	$(CC) -shared -Wl,-soname,lib$(SHARED_LIB_BIN).so.$(firstword $(subst ., ,$(SHARED_LIB_VERSION))) -o lib$(SHARED_LIB_BIN).so.$(SHARED_LIB_VERSION) $(SHARED_LIB_OBJS) $(SHARED_LIB_LIBS)
 
 #
 # Client lib
 #
 
-$(CL_TAR): $(SH_TAR) $(CL_OBJS)
-	$(CC) -shared -Wl,-R,.,-soname,$(CL_BIN_MAJ) -o $(CL_BIN_REV) $(CL_OBJS) $(SH_BIN_LIB)
-	ln -sf $(CL_BIN_REV) $(CL_BIN_MAJ)
-	ln -sf $(CL_BIN_REV) $(CL_BIN_LIB)
+clientlib: sharedlib $(CLIENT_LIB_OBJS)
+	$(CC) -shared -Wl,-soname,lib$(CLIENT_LIB_BIN).so.$(firstword $(subst ., ,$(CLIENT_LIB_VERSION))) -o lib$(CLIENT_LIB_BIN).so.$(CLIENT_LIB_VERSION) $(CLIENT_LIB_OBJS) $(CLIENT_LIB_LIBS)
 
 #
 # Server lib
 #
 
-$(SL_TAR): $(SH_TAR) $(SL_OBJS)
-	$(CC) -shared -Wl,-R,.,-soname,$(SL_BIN_MAJ) -o $(SL_BIN_REV) $(SL_OBJS) $(SH_BIN_LIB) -ldlmalloc -lEGL -lGLESv2
-	ln -sf $(SL_BIN_REV) $(SL_BIN_MAJ)
-	ln -sf $(SL_BIN_REV) $(SL_BIN_LIB)
+serverlib: sharedlib $(SERVER_LIB_OBJS)
+	$(CC) -shared -Wl,-soname,lib$(SERVER_LIB_BIN).so.$(firstword $(subst ., ,$(SERVER_LIB_VERSION))) -o lib$(SERVER_LIB_BIN).so.$(SERVER_LIB_VERSION) $(SERVER_LIB_OBJS) $(SERVER_LIB_LIBS)
 
 #
 # Compilation
@@ -134,9 +112,9 @@ $(SL_TAR): $(SH_TAR) $(SL_OBJS)
 #
 
 clean:
-	rm -f $(SH_OBJS) $(SH_BIN_LIB) $(SH_BIN_MAJ) $(SH_BIN_REV) 
-	rm -f $(CL_OBJS) $(CL_BIN_LIB) $(CL_BIN_MAJ) $(CL_BIN_REV) 
-	rm -f $(SL_OBJS) $(SL_BIN_LIB) $(SL_BIN_MAJ) $(SL_BIN_REV)
+	rm -f $(SHARED_LIB_OBJS) *$(SHARED_LIB_BIN)*
+	rm -f $(CLIENT_LIB_OBJS) *$(CLIENT_LIB_BIN)*
+	rm -f $(SERVER_LIB_OBJS) *$(SERVER_LIB_BIN)*
 
 cleanall: clean
 	rm -R docs
